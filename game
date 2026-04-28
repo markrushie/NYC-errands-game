@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NYC Safe Crossing & Errands</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { overscroll-behavior-y: contain; }
+        #simCanvas { touch-action: none; image-rendering: pixelated; }
+        .dpad-btn {
+            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: white; border-radius: 12px; width: 54px; height: 54px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 1.5rem; user-select: none;
+            -webkit-user-select: none; cursor: pointer; backdrop-filter: blur(4px);
+            transition: background 0.1s;
+        }
+        .dpad-btn:active { background: rgba(255,255,255,0.4); transform: scale(0.95); }
+    </style>
+</head>
+<body class="bg-stone-900 text-stone-100 font-sans antialiased min-h-screen flex flex-col items-center justify-center p-4 md:p-8">
+
+    <div class="w-full max-w-4xl flex flex-col items-center">
+        <div class="text-center mb-4">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-sky-400 tracking-tight">NYC Errand Run</h1>
+            <p class="mt-2 text-stone-400 max-w-2xl mx-auto text-sm md:text-base leading-relaxed">
+                <strong>Run your errands, then head Home (🏡 top right)!</strong><br>
+                Step on the yellow door mats to enter a store. Wait for the <strong class="text-emerald-400">WALK</strong> sign. Your timer restarts if you get hit!
+            </p>
+        </div>
+        
+        <!-- Game Canvas Container -->
+        <div class="relative w-full border-4 border-stone-700 rounded-2xl overflow-hidden bg-stone-800 shadow-2xl" style="aspect-ratio: 30/23; max-height: 650px;">
+            <canvas id="simCanvas" width="600" height="460" class="absolute inset-0 w-full h-full object-contain"></canvas>
+            
+            <!-- Mobile Controls overlay -->
+            <div class="absolute bottom-4 right-4 flex flex-col items-center gap-2 sm:hidden z-20">
+                <button class="dpad-btn" id="btn-up">↑</button>
+                <div class="flex gap-14">
+                    <button class="dpad-btn" id="btn-left">←</button>
+                    <button class="dpad-btn" id="btn-right">→</button>
+                </div>
+                <button class="dpad-btn" id="btn-down">↓</button>
+            </div>
+
+            <!-- Start / Game Over Overlay -->
+            <div id="simOverlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center z-40 backdrop-blur-sm">
+                <h2 id="simMessage" class="text-4xl md:text-5xl font-bold text-white mb-4 text-center px-4 drop-shadow-lg">Ready to Run Errands?</h2>
+                <p id="simSubMessage" class="text-stone-300 mb-8 text-center px-4 md:text-lg">Use Arrow Keys or WASD to move.</p>
+                <button id="startBtn" onclick="beginGame()" class="px-8 py-4 bg-sky-500 hover:bg-sky-400 text-white text-xl font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg">
+                    Start Simulation
+                </button>
+            </div>
+
+            <!-- Store Interaction Modal -->
+            <div id="storeModal" class="absolute inset-0 bg-black/60 hidden flex flex-col items-center justify-center z-50 backdrop-blur-sm">
+                <div class="bg-stone-800 p-6 rounded-2xl border-2 border-stone-500 text-center shadow-2xl max-w-sm w-full mx-4 transform transition-all">
+                    <div id="storeIcon" class="text-4xl mb-2">🏪</div>
+                    <h3 id="storeName" class="text-2xl font-bold text-white mb-6">Store Name</h3>
+                    <div class="flex flex-col gap-3">
+                        <button id="storeOpt1" class="px-4 py-3 bg-stone-700 hover:bg-sky-600 rounded-xl text-white font-bold transition-colors shadow-sm flex items-center justify-center gap-2 text-lg">Option 1</button>
+                        <button id="storeOpt2" class="px-4 py-3 bg-stone-700 hover:bg-sky-600 rounded-xl text-white font-bold transition-colors shadow-sm flex items-center justify-center gap-2 text-lg">Option 2</button>
+                        <button onclick="closeStore()" class="px-4 py-2 mt-4 text-stone-400 hover:text-white font-semibold transition-colors">Nevermind, Leave</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- WEB AUDIO API (SUCCESS SOUND) ---
+        function playSuccessMusic() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return; 
+                const ctx = new AudioContext();
+                
+                const playNote = (freq, startTime, duration) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, ctx.currentTime + startTime);
+                    
+                    gain.gain.setValueAtTime(0.1, ctx.currentTime + startTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startTime + duration);
+                    
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(ctx.currentTime + startTime);
+                    osc.stop(ctx.currentTime + startTime + duration);
+                };
+                
+                // Triumphant Arpeggio (C major)
+                playNote(261.63, 0.0, 0.2); // C4
+                playNote(329.63, 0.15, 0.2); // E4
+                playNote(392.00, 0.3, 0.2); // G4
+                playNote(523.25, 0.45, 0.6); // C5 (held)
+            } catch(e) { console.log("Audio not supported or blocked by browser policy."); }
+        }
+
+        // --- INTERACTIVE CANVAS SIMULATION ---
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        let simActive = false;
+        let animationId;
+
+        // Game State Variables
+        let player, vehicles, trafficLight, keys, gameState;
+        let gameTimer = 0;
+        let lastFrameTime = 0;
+        let currentStore = null;
+        let floatingEmojis = [];
+        
+        // Colors
+        const colors = {
+            road: '#3f3f46', line: '#f8fafc', grass: '#14532d', sidewalk: '#a8a29e',
+            car1: '#e11d48', car2: '#2563eb', car3: '#16a34a', carLyft: '#ff00bf',
+            moped: '#f59e0b', bike: '#14b8a6',
+            lightBox: '#1c1917', redOn: '#ef4444', redOff: '#451a1a', 
+            yelOn: '#eab308', yelOff: '#42330a', grnOn: '#22c55e', grnOff: '#0f3d1e'
+        };
+
+        // Layout Geometry
+        const crosswalks = [ { x: 100, w: 40 }, { x: 280, w: 40 }, { x: 460, w: 40 } ];
+        const lanes = [
+            { y: 110, dir: 1 }, { y: 170, dir: 1 },
+            { y: 230, dir: -1 }, { y: 290, dir: -1 }
+        ];
+
+        // Store & Home Configurations
+        const homeLocation = {
+            rect: { x: 480, y: 0, w: 100, h: 60 },
+            door: { x: 510, y: 60, w: 40, h: 15 },
+            color: '#065f46', name: 'Home'
+        };
+
+        const stores = [
+            {
+                id: 'pizzeria', name: 'Pizzeria', type: 'top', icon: '🍕',
+                rect: { x: 140, y: 0, w: 100, h: 60 }, door: { x: 170, y: 60, w: 40, h: 15 },
+                color: '#dc2626', 
+                options: [ { text: 'Buy a Slice', emoji: '😋', icon: '🍕' }, { text: 'Buy a Pie', emoji: '😋', icon: '🍕' } ]
+            },
+            {
+                id: 'jamaican', name: 'Jamaican Spot', type: 'top', icon: '🍛',
+                rect: { x: 310, y: 0, w: 100, h: 60 }, door: { x: 340, y: 60, w: 40, h: 15 },
+                color: '#16a34a', 
+                options: [ { text: 'Buy a Patty', emoji: '😋', icon: '🥟' }, { text: 'Buy a Meal', emoji: '😋', icon: '🍛' } ]
+            },
+            {
+                id: 'bodega', name: 'Bodega', type: 'bottom', icon: '🏪',
+                rect: { x: 30, y: 380, w: 100, h: 80 }, door: { x: 60, y: 365, w: 40, h: 15 },
+                color: '#f59e0b', 
+                options: [ { text: 'Bacon Egg & Cheese', emoji: '😋', icon: '🥪' }, { text: 'Buy a Hero', emoji: '😋', icon: '🥖' } ]
+            },
+            {
+                id: 'laundry', name: 'Laundromat', type: 'bottom', icon: '🧺',
+                rect: { x: 180, y: 380, w: 100, h: 80 }, door: { x: 210, y: 365, w: 40, h: 15 },
+                color: '#0ea5e9', 
+                options: [ { text: 'Drop off Laundry', emoji: '🫧', icon: '🧺' }, { text: 'Pick up Laundry', emoji: '🫧', icon: '👕' } ]
+            },
+            {
+                id: 'cell', name: 'Cell Phone Shop', type: 'bottom', icon: '📱',
+                rect: { x: 330, y: 380, w: 100, h: 80 }, door: { x: 360, y: 365, w: 40, h: 15 },
+                color: '#8b5cf6', 
+                options: [ { text: 'Buy Cell Phone', emoji: '😁', icon: '📱' }, { text: 'Get a Tablet', emoji: '😁', icon: '💻' } ]
+            }
+        ];
+
+        function initializeState() {
+            // Start right outside the bodega on the bottom sidewalk
+            player = { x: 70, y: 320, w: 20, h: 30, speed: 2.8 };
+            vehicles = [];
+            floatingEmojis = [];
+            trafficLight = { state: 'green', timer: 0, intervals: { green: 300, yellow: 100, red: 400 } }; 
+            keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, w: false, a: false, s: false, d: false };
+            gameState = 'idle'; 
+            gameTimer = 0;
+        }
+
+        function beginGame() {
+            document.getElementById('simOverlay').classList.add('hidden');
+            initializeState();
+            gameState = 'playing';
+            simActive = true;
+            lastFrameTime = Date.now();
+            
+            // Initial traffic spread out
+            spawnVehicle(1, 40, true); spawnVehicle(2, -50, true);
+            spawnVehicle(3, 400, true); spawnVehicle(4, 550, true);
+        }
+
+        function endGame(message, colorClass, subMessage) {
+            gameState = 'over';
+            simActive = false;
+            keys = {}; 
+            
+            const overlay = document.getElementById('simOverlay');
+            document.getElementById('simMessage').textContent = message;
+            document.getElementById('simMessage').className = `text-4xl md:text-5xl font-bold mb-2 text-center px-4 drop-shadow-lg ${colorClass}`;
+            
+            if(message.includes("Safe")) {
+                document.getElementById('simSubMessage').innerHTML = `${subMessage}<br><span class="text-sky-300 font-bold text-2xl mt-2 block">Total Time: ${gameTimer.toFixed(1)}s</span>`;
+                document.getElementById('startBtn').textContent = "Play Again";
+            } else {
+                document.getElementById('simSubMessage').textContent = subMessage;
+                document.getElementById('startBtn').textContent = "Restart Timer";
+            }
+            
+            overlay.classList.remove('hidden');
+        }
+
+        // --- STORE LOGIC ---
+        function openStore(store) {
+            gameState = 'store';
+            currentStore = store;
+            keys = {}; // Clear movement
+            
+            const modal = document.getElementById('storeModal');
+            document.getElementById('storeIcon').textContent = store.icon;
+            document.getElementById('storeName').textContent = store.name;
+            
+            const btn1 = document.getElementById('storeOpt1');
+            btn1.innerHTML = `<span class="text-2xl">${store.options[0].icon}</span> ${store.options[0].text}`;
+            btn1.onclick = () => purchase(store.options[0]);
+
+            const btn2 = document.getElementById('storeOpt2');
+            btn2.innerHTML = `<span class="text-2xl">${store.options[1].icon}</span> ${store.options[1].text}`;
+            btn2.onclick = () => purchase(store.options[1]);
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function purchase(option) {
+            floatingEmojis.push({ char: option.emoji, x: player.x, y: player.y - 10, life: 60, maxLife: 60 });
+            closeStore();
+        }
+
+        function closeStore() {
+            const modal = document.getElementById('storeModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            
+            // Bounce player slightly away from the door
+            if (currentStore.type === 'top') player.y += 15;
+            else player.y -= 15;
+            
+            currentStore = null;
+            gameState = 'playing';
+            lastFrameTime = Date.now(); 
+        }
+
+        // --- INPUT LOGIC ---
+        window.addEventListener('keydown', e => { if(keys.hasOwnProperty(e.key)) { keys[e.key] = true; if(simActive) e.preventDefault(); } });
+        window.addEventListener('keyup', e => { if(keys.hasOwnProperty(e.key)) keys[e.key] = false; });
+
+        const setupBtn = (id, key) => {
+            const btn = document.getElementById(id);
+            if(!btn) return;
+            const press = (e) => { e.preventDefault(); keys[key] = true; };
+            const release = (e) => { e.preventDefault(); keys[key] = false; };
+            btn.addEventListener('touchstart', press, {passive: false}); btn.addEventListener('touchend', release, {passive: false});
+            btn.addEventListener('mousedown', press); btn.addEventListener('mouseup', release); btn.addEventListener('mouseleave', release);
+        };
+        setupBtn('btn-up', 'ArrowUp'); setupBtn('btn-down', 'ArrowDown');
+        setupBtn('btn-left', 'ArrowLeft'); setupBtn('btn-right', 'ArrowRight');
+
+        // --- TRAFFIC LOGIC ---
+        function spawnVehicle(forcedLane = null, forcedX = null, bypassChance = false) {
+            if(!bypassChance && Math.random() > 0.025) return; 
+            
+            const laneIndex = forcedLane ? forcedLane - 1 : Math.floor(Math.random() * lanes.length);
+            const lane = lanes[laneIndex];
+            const x = forcedX !== null ? forcedX : (lane.dir === 1 ? -80 : 680);
+            
+            const typeRand = Math.random();
+            let type = 'car', w = 55, h = 32, speed, color;
+            
+            if (typeRand > 0.7 && typeRand <= 0.9) {
+                type = 'moped'; w = 30; h = 16; speed = 3 + Math.random() * 2; color = colors.moped;
+            } else if (typeRand > 0.9) {
+                type = 'bike'; w = 30; h = 12; speed = 1.5 + Math.random() * 1.5; color = colors.bike;
+            } else {
+                speed = 2 + Math.random() * 2;
+                const carColors = [colors.car1, colors.car2, colors.car3, colors.carLyft];
+                color = carColors[Math.floor(Math.random() * carColors.length)];
+            }
+
+            let safeToSpawn = true;
+            vehicles.forEach(v => {
+                if(v.laneIndex === laneIndex && Math.abs(v.x - x) < 80) safeToSpawn = false;
+            });
+
+            if(safeToSpawn) vehicles.push({ x, y: lane.y, w, h, speed, dir: lane.dir, laneIndex, type, color });
+        }
+
+        function update() {
+            if(gameState !== 'playing') return;
+
+            // Timer update
+            let now = Date.now();
+            gameTimer += (now - lastFrameTime) / 1000;
+            lastFrameTime = now;
+
+            // Traffic Light
+            trafficLight.timer++;
+            if(trafficLight.state === 'green' && trafficLight.timer > trafficLight.intervals.green) {
+                trafficLight.state = 'yellow'; trafficLight.timer = 0;
+            } else if(trafficLight.state === 'yellow' && trafficLight.timer > trafficLight.intervals.yellow) {
+                trafficLight.state = 'red'; trafficLight.timer = 0;
+            } else if(trafficLight.state === 'red' && trafficLight.timer > trafficLight.intervals.red) {
+                trafficLight.state = 'green'; trafficLight.timer = 0;
+            }
+
+            // Player Movement
+            if(keys.ArrowUp || keys.w) player.y -= player.speed;
+            if(keys.ArrowDown || keys.s) player.y += player.speed;
+            if(keys.ArrowLeft || keys.a) player.x -= player.speed;
+            if(keys.ArrowRight || keys.d) player.x += player.speed;
+            
+            // Screen Bounds (Canvas is now 600x460)
+            player.x = Math.max(0, Math.min(600 - player.w, player.x));
+            player.y = Math.max(0, Math.min(460 - player.h, player.y));
+
+            // Check Home Location!
+            if (player.x < homeLocation.door.x + homeLocation.door.w && player.x + player.w > homeLocation.door.x &&
+                player.y < homeLocation.door.y + homeLocation.door.h && player.y + player.h > homeLocation.door.y) {
+                playSuccessMusic();
+                endGame("Safe at Home!", "text-emerald-400", "You successfully finished your errands.");
+                return;
+            }
+            
+            // Slide against Home wall
+            if (player.x < homeLocation.rect.x + homeLocation.rect.w && player.x + player.w > homeLocation.rect.x &&
+                player.y < homeLocation.rect.y + homeLocation.rect.h && player.y + player.h > homeLocation.rect.y) {
+                player.y = homeLocation.rect.y + homeLocation.rect.h;
+            }
+
+            // Store Collision & Door Interaction
+            stores.forEach(store => {
+                if (player.x < store.door.x + store.door.w && player.x + player.w > store.door.x &&
+                    player.y < store.door.y + store.door.h && player.y + player.h > store.door.y) {
+                    openStore(store);
+                }
+                if (player.x < store.rect.x + store.rect.w && player.x + player.w > store.rect.x &&
+                    player.y < store.rect.y + store.rect.h && player.y + player.h > store.rect.y) {
+                    if (store.type === 'top') player.y = store.rect.y + store.rect.h;
+                    else player.y = store.rect.y - player.h;
+                }
+            });
+
+            // Update Vehicles
+            spawnVehicle();
+            vehicles.forEach((v, i) => {
+                let shouldStop = false;
+                const safeDist = 20;
+
+                // Stop for red/yellow lights
+                if(trafficLight.state !== 'green') {
+                    if(v.dir === 1) {
+                        let nextCw = crosswalks.find(cw => cw.x > v.x + v.w);
+                        if (nextCw && (v.x + v.w < nextCw.x - 10) && (v.x + v.w + v.speed >= nextCw.x - 10 - safeDist)) shouldStop = true;
+                    } else {
+                        let nextCw = [...crosswalks].reverse().find(cw => cw.x + cw.w < v.x);
+                        if (nextCw && (v.x > nextCw.x + nextCw.w + 10) && (v.x - v.speed <= nextCw.x + nextCw.w + 10 + safeDist)) shouldStop = true;
+                    }
+                }
+
+                // Stop for vehicles ahead
+                vehicles.forEach((other, j) => {
+                    if(i !== j && v.laneIndex === other.laneIndex) {
+                        if(v.dir === 1 && other.x > v.x && (other.x - (v.x + v.w)) < safeDist) shouldStop = true;
+                        if(v.dir === -1 && v.x > other.x && (v.x - (other.x + other.w)) < safeDist) shouldStop = true;
+                    }
+                });
+
+                if(!shouldStop) v.x += v.speed * v.dir;
+
+                // Collision Detection
+                const hitMargin = 3;
+                if(player.x + hitMargin < v.x + v.w && player.x + player.w - hitMargin > v.x &&
+                   player.y + hitMargin < v.y + v.h && player.y + player.h - hitMargin > v.y) {
+                    endGame("Hit by Traffic!", "text-rose-500", "Watch the traffic and wait for the WALK signal.");
+                }
+            });
+
+            vehicles = vehicles.filter(v => v.x > -150 && v.x < 750);
+        }
+
+        // --- DRAWING FUNCTIONS ---
+        function drawPerson(ctx, x, y, w, h) {
+            ctx.fillStyle = '#fde047'; ctx.fillRect(x + 4, y + 10, w - 8, h - 18); // body
+            ctx.fillStyle = '#fbbf24'; ctx.beginPath(); ctx.arc(x + w/2, y + 5, 6, 0, Math.PI*2); ctx.fill(); // head
+            ctx.fillStyle = '#1d4ed8'; ctx.fillRect(x + 5, y + h - 8, 4, 8); ctx.fillRect(x + w - 9, y + h - 8, 4, 8); // legs
+        }
+
+        function drawVehicle(ctx, v) {
+            if (v.type === 'car') {
+                ctx.fillStyle = v.color; ctx.beginPath(); ctx.roundRect(v.x, v.y, v.w, v.h, 6); ctx.fill();
+                ctx.fillStyle = '#9ca3af'; // Windshields
+                if(v.dir === 1) { ctx.fillRect(v.x + 38, v.y + 4, 10, 24); ctx.fillRect(v.x + 8, v.y + 4, 25, 24); } 
+                else { ctx.fillRect(v.x + 7, v.y + 4, 10, 24); ctx.fillRect(v.x + 22, v.y + 4, 25, 24); }
+            } else if (v.type === 'moped') {
+                ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(v.x + 6, v.y + v.h, 4, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(v.x + v.w - 6, v.y + v.h, 4, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = v.color; ctx.fillRect(v.x + 4, v.y + 6, v.w - 8, 8);
+                ctx.fillStyle = '#ef4444'; ctx.fillRect(v.x + (v.dir === 1 ? 6 : 14), v.y - 4, 10, 12); // Rider
+                ctx.fillStyle = '#fbbf24'; ctx.beginPath(); ctx.arc(v.x + (v.dir===1 ? 11 : 19), v.y - 5, 4, 0, Math.PI*2); ctx.fill();
+            } else if (v.type === 'bike') {
+                ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(v.x + 5, v.y + v.h, 5, 0, Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.arc(v.x + v.w - 5, v.y + v.h, 5, 0, Math.PI*2); ctx.stroke();
+                ctx.strokeStyle = v.color; ctx.beginPath(); ctx.moveTo(v.x+5, v.y+v.h); ctx.lineTo(v.x+15, v.y+6); ctx.lineTo(v.x+v.w-5, v.y+v.h); ctx.stroke(); ctx.beginPath(); ctx.moveTo(v.x+10, v.y+6); ctx.lineTo(v.x+20, v.y+6); ctx.stroke();
+                ctx.fillStyle = '#3b82f6'; ctx.fillRect(v.x + (v.dir===1 ? 10 : 15), v.y - 2, 6, 8); // Rider
+                ctx.fillStyle = '#fca5a5'; ctx.beginPath(); ctx.arc(v.x + (v.dir===1 ? 13 : 18), v.y - 4, 3, 0, Math.PI*2); ctx.fill();
+            }
+        }
+
+        // Now draws the HUD on the LEFT side of the supplied X coordinate
+        function drawTrafficHUD(ctx, x, y) {
+            ctx.fillStyle = colors.lightBox; ctx.fillRect(x, y, 16, 40); ctx.fillRect(x + 6, y + 40, 4, 15);
+            ctx.beginPath(); ctx.arc(x + 8, y + 8, 4, 0, Math.PI*2); ctx.fillStyle = trafficLight.state === 'red' ? colors.redOn : colors.redOff; ctx.fill();
+            ctx.beginPath(); ctx.arc(x + 8, y + 20, 4, 0, Math.PI*2); ctx.fillStyle = trafficLight.state === 'yellow' ? colors.yelOn : colors.yelOff; ctx.fill();
+            ctx.beginPath(); ctx.arc(x + 8, y + 32, 4, 0, Math.PI*2); ctx.fillStyle = trafficLight.state === 'green' ? colors.grnOn : colors.grnOff; ctx.fill();
+
+            // Pedestrian Box moved to the RIGHT of the pole (so it points inward to the crosswalk)
+            ctx.fillStyle = colors.lightBox; ctx.fillRect(x + 18, y + 15, 26, 18);
+            ctx.font = "bold 9px sans-serif"; ctx.textAlign = "center";
+            if(trafficLight.state === 'red') { ctx.fillStyle = colors.line; ctx.fillText("WALK", x + 31, y + 27); } 
+            else { ctx.fillStyle = colors.yelOn; ctx.fillText("WAIT", x + 31, y + 27); }
+        }
+
+        function draw() {
+            ctx.fillStyle = colors.grass; ctx.fillRect(0, 0, 600, 460); // Grass
+            ctx.fillStyle = colors.sidewalk; 
+            ctx.fillRect(0, 0, 600, 100); // Top Sidewalk
+            ctx.fillRect(0, 340, 600, 120); // Bottom Sidewalk
+            
+            ctx.fillStyle = colors.road; ctx.fillRect(0, 100, 600, 240); // Road
+
+            // Lane Dividers
+            ctx.fillStyle = colors.line;
+            for(let i=0; i<600; i+=30) { ctx.fillRect(i, 160, 15, 2); ctx.fillRect(i, 280, 15, 2); }
+            ctx.fillStyle = '#fbbf24'; ctx.fillRect(0, 218, 600, 2); ctx.fillRect(0, 222, 600, 2);
+
+            // Crosswalks
+            crosswalks.forEach(cw => {
+                ctx.fillStyle = colors.line; for(let i = 105; i < 335; i += 15) ctx.fillRect(cw.x, i, cw.w, 8);
+                ctx.fillRect(cw.x - 10, 100, 4, 115); ctx.fillRect(cw.x + cw.w + 6, 225, 4, 115);
+                
+                // Placed on the LEFT side of the crosswalk (cw.x is the left boundary of the crossing)
+                drawTrafficHUD(ctx, cw.x - 38, 40);
+            });
+
+            // Draw Home
+            ctx.fillStyle = homeLocation.color; ctx.fillRect(homeLocation.rect.x, homeLocation.rect.y, homeLocation.rect.w, homeLocation.rect.h);
+            ctx.fillStyle = '#fde047'; ctx.fillRect(homeLocation.door.x, homeLocation.door.y, homeLocation.door.w, homeLocation.door.h);
+            ctx.fillStyle = 'white'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('🏡 Home', homeLocation.rect.x + homeLocation.rect.w/2, homeLocation.rect.y + 35);
+
+            // Draw Stores
+            stores.forEach(store => {
+                ctx.fillStyle = store.color;
+                ctx.fillRect(store.rect.x, store.rect.y, store.rect.w, store.rect.h);
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                for(let i=0; i<store.rect.w; i+=10) {
+                    ctx.fillRect(store.rect.x + i, store.rect.y + (store.type === 'top' ? store.rect.h - 15 : 0), 5, 15);
+                }
+                ctx.fillStyle = '#fde047'; ctx.fillRect(store.door.x, store.door.y, store.door.w, store.door.h);
+                ctx.fillStyle = 'white'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+                ctx.fillText(store.name, store.rect.x + store.rect.w/2, store.rect.y + 30);
+            });
+
+            // Draw Entities
+            vehicles.forEach(v => drawVehicle(ctx, v));
+            drawPerson(ctx, player.x, player.y, player.w, player.h);
+
+            // Draw Floating Emojis
+            floatingEmojis.forEach(e => {
+                ctx.globalAlpha = e.life / e.maxLife;
+                ctx.font = "28px sans-serif";
+                ctx.textAlign = 'center';
+                ctx.fillText(e.char, e.x + 10, e.y);
+                e.y -= 0.8;
+                e.life--;
+            });
+            ctx.globalAlpha = 1.0;
+            floatingEmojis = floatingEmojis.filter(e => e.life > 0);
+
+            // Timer HUD (Moved to Bottom Right to clear up space for the top-left traffic lights)
+            ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.roundRect(470, 410, 120, 40, 8); ctx.fill();
+            ctx.fillStyle = '#38bdf8'; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center";
+            ctx.fillText(`Time: ${gameTimer.toFixed(1)}s`, 530, 436);
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initializeState();
+            draw(); 
+            requestAnimationFrame(gameLoop);
+        });
+    </script>
+</body>
+</html>
