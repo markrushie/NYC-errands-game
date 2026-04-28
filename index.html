@@ -35,6 +35,11 @@
         <div class="relative w-full border-4 border-stone-700 rounded-2xl overflow-hidden bg-stone-800 shadow-2xl" style="aspect-ratio: 30/23; max-height: 650px;">
             <canvas id="simCanvas" width="600" height="460" class="absolute inset-0 w-full h-full object-contain"></canvas>
             
+            <!-- Advertising Overlay -->
+            <div id="adOverlay" class="absolute top-4 left-4 z-[60] animate-bounce pointer-events-none transition-opacity duration-500">
+                <img src="https://raw.githubusercontent.com/markrushie/NYC-errands-game/main/firstsitead.gif" alt="Advertisement" class="w-32 h-32 object-cover rounded-xl shadow-2xl border-2 border-stone-400">
+            </div>
+
             <!-- Start / Game Over Overlay -->
             <div id="simOverlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center z-40 backdrop-blur-sm">
                 <h2 id="simMessage" class="text-4xl md:text-5xl font-bold text-white mb-4 text-center px-4 drop-shadow-lg">Ready to Run Errands?</h2>
@@ -186,6 +191,14 @@
 
         function beginGame() {
             document.getElementById('simOverlay').classList.add('hidden');
+            
+            // Hide the ad overlay only when the user clicks Start
+            const ad = document.getElementById('adOverlay');
+            if (ad && !ad.classList.contains('opacity-0')) {
+                ad.classList.add('opacity-0');
+                setTimeout(() => ad.style.display = 'none', 500); 
+            }
+
             initializeState();
             gameState = 'playing';
             simActive = true;
@@ -222,7 +235,7 @@
         function openStore(store) {
             gameState = 'store';
             currentStore = store;
-            // Clear movement keys safely (BUG FIX applied here so desktop arrows still exist in memory)
+            // Clear movement keys safely
             keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, w: false, a: false, s: false, d: false };
             
             const modal = document.getElementById('storeModal');
@@ -437,7 +450,7 @@
             ctx.beginPath(); ctx.arc(x + 8, y + 20, 4, 0, Math.PI*2); ctx.fillStyle = trafficLight.state === 'yellow' ? colors.yelOn : colors.yelOff; ctx.fill();
             ctx.beginPath(); ctx.arc(x + 8, y + 32, 4, 0, Math.PI*2); ctx.fillStyle = trafficLight.state === 'green' ? colors.grnOn : colors.grnOff; ctx.fill();
 
-            // Pedestrian Box placed to the right of the pole (pointing toward crosswalk)
+            // Pedestrian Box placed to the right of the pole
             ctx.fillStyle = colors.lightBox; ctx.fillRect(x + 18, y + 15, 26, 18);
             ctx.font = "bold 9px sans-serif"; ctx.textAlign = "center";
             if(trafficLight.state === 'red') { ctx.fillStyle = colors.line; ctx.fillText("WALK", x + 31, y + 27); } 
