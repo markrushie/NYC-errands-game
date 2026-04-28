@@ -25,7 +25,7 @@
     <div class="w-full max-w-4xl flex flex-col items-center">
         <div class="text-center mb-4">
             <h1 class="text-3xl md:text-4xl font-extrabold text-sky-400 tracking-tight">NYC Errand Run</h1>
-            <p class="mt-2 text-stone-400 max-w-2xl mx-auto text-sm md:text-base leading-relaxed">
+            <p class="mt-2 text-stone-400 max-w-2xl mx-auto text-sm md:text-base leading-relaxed hidden md:block">
                 <strong>Run your errands, then head Home (🏡 top right)!</strong><br>
                 Step on the yellow door mats to enter a store. Wait for the <strong class="text-emerald-400">WALK</strong> sign. Your timer restarts if you get hit!
             </p>
@@ -35,20 +35,10 @@
         <div class="relative w-full border-4 border-stone-700 rounded-2xl overflow-hidden bg-stone-800 shadow-2xl" style="aspect-ratio: 30/23; max-height: 650px;">
             <canvas id="simCanvas" width="600" height="460" class="absolute inset-0 w-full h-full object-contain"></canvas>
             
-            <!-- Mobile Controls overlay -->
-            <div class="absolute bottom-4 right-4 flex flex-col items-center gap-2 sm:hidden z-20">
-                <button class="dpad-btn" id="btn-up">↑</button>
-                <div class="flex gap-14">
-                    <button class="dpad-btn" id="btn-left">←</button>
-                    <button class="dpad-btn" id="btn-right">→</button>
-                </div>
-                <button class="dpad-btn" id="btn-down">↓</button>
-            </div>
-
             <!-- Start / Game Over Overlay -->
             <div id="simOverlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center z-40 backdrop-blur-sm">
                 <h2 id="simMessage" class="text-4xl md:text-5xl font-bold text-white mb-4 text-center px-4 drop-shadow-lg">Ready to Run Errands?</h2>
-                <p id="simSubMessage" class="text-stone-300 mb-8 text-center px-4 md:text-lg">Use Arrow Keys or WASD to move.</p>
+                <p id="simSubMessage" class="text-stone-300 mb-8 text-center px-4 md:text-lg">Use Arrow Keys, WASD, or Touch Controls to move.</p>
                 <button id="startBtn" onclick="beginGame()" class="px-8 py-4 bg-sky-500 hover:bg-sky-400 text-white text-xl font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg">
                     Start Simulation
                 </button>
@@ -67,6 +57,17 @@
                 </div>
             </div>
         </div>
+
+        <!-- Mobile Controls (Outside Canvas Area) -->
+        <div class="mt-4 flex flex-col items-center gap-2 sm:hidden w-full max-w-sm bg-stone-800 p-4 rounded-2xl border-2 border-stone-700 shadow-xl">
+            <button class="dpad-btn" id="btn-up">↑</button>
+            <div class="flex gap-16">
+                <button class="dpad-btn" id="btn-left">←</button>
+                <button class="dpad-btn" id="btn-right">→</button>
+            </div>
+            <button class="dpad-btn" id="btn-down">↓</button>
+        </div>
+
     </div>
 
     <script>
@@ -97,7 +98,7 @@
                 playNote(329.63, 0.15, 0.2); // E4
                 playNote(392.00, 0.3, 0.2); // G4
                 playNote(523.25, 0.45, 0.6); // C5 (held)
-            } catch(e) { console.log("Audio not supported or blocked by browser policy."); }
+            } catch(e) { console.log("Audio not supported."); }
         }
 
         // --- INTERACTIVE CANVAS SIMULATION ---
@@ -175,7 +176,10 @@
             vehicles = [];
             floatingEmojis = [];
             trafficLight = { state: 'green', timer: 0, intervals: { green: 300, yellow: 100, red: 400 } }; 
+            
+            // Reset keys safely
             keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, w: false, a: false, s: false, d: false };
+            
             gameState = 'idle'; 
             gameTimer = 0;
         }
@@ -186,6 +190,7 @@
             gameState = 'playing';
             simActive = true;
             lastFrameTime = Date.now();
+            window.focus(); // Ensure game canvas area responds to keys immediately
             
             // Initial traffic spread out
             spawnVehicle(1, 40, true); spawnVehicle(2, -50, true);
@@ -195,7 +200,8 @@
         function endGame(message, colorClass, subMessage) {
             gameState = 'over';
             simActive = false;
-            keys = {}; 
+            // Clear keys safely
+            keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, w: false, a: false, s: false, d: false };
             
             const overlay = document.getElementById('simOverlay');
             document.getElementById('simMessage').textContent = message;
@@ -216,7 +222,8 @@
         function openStore(store) {
             gameState = 'store';
             currentStore = store;
-            keys = {}; // Clear movement
+            // Clear movement keys safely (BUG FIX applied here so desktop arrows still exist in memory)
+            keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, w: false, a: false, s: false, d: false };
             
             const modal = document.getElementById('storeModal');
             document.getElementById('storeIcon').textContent = store.icon;
@@ -244,7 +251,13 @@
             modal.classList.add('hidden');
             modal.classList.remove('flex');
             
-            // Bounce player slightly away from the door
+            // Remove focus from the buttons inside the modal so the browser registers keyboard arrows again
+            if (document.activeElement) {
+                document.activeElement.blur();
+            }
+            window.focus();
+            
+            // Bounce player slightly away from the door so they don't instantly re-enter
             if (currentStore.type === 'top') player.y += 15;
             else player.y -= 15;
             
@@ -321,11 +334,11 @@
             if(keys.ArrowLeft || keys.a) player.x -= player.speed;
             if(keys.ArrowRight || keys.d) player.x += player.speed;
             
-            // Screen Bounds (Canvas is now 600x460)
+            // Screen Bounds
             player.x = Math.max(0, Math.min(600 - player.w, player.x));
             player.y = Math.max(0, Math.min(460 - player.h, player.y));
 
-            // Check Home Location!
+            // Check Home Location
             if (player.x < homeLocation.door.x + homeLocation.door.w && player.x + player.w > homeLocation.door.x &&
                 player.y < homeLocation.door.y + homeLocation.door.h && player.y + player.h > homeLocation.door.y) {
                 playSuccessMusic();
@@ -417,14 +430,14 @@
             }
         }
 
-        // Now draws the HUD on the LEFT side of the supplied X coordinate
+        // HUD placed dynamically. Y axis adjusted to sit exactly on the double yellow line.
         function drawTrafficHUD(ctx, x, y) {
             ctx.fillStyle = colors.lightBox; ctx.fillRect(x, y, 16, 40); ctx.fillRect(x + 6, y + 40, 4, 15);
             ctx.beginPath(); ctx.arc(x + 8, y + 8, 4, 0, Math.PI*2); ctx.fillStyle = trafficLight.state === 'red' ? colors.redOn : colors.redOff; ctx.fill();
             ctx.beginPath(); ctx.arc(x + 8, y + 20, 4, 0, Math.PI*2); ctx.fillStyle = trafficLight.state === 'yellow' ? colors.yelOn : colors.yelOff; ctx.fill();
             ctx.beginPath(); ctx.arc(x + 8, y + 32, 4, 0, Math.PI*2); ctx.fillStyle = trafficLight.state === 'green' ? colors.grnOn : colors.grnOff; ctx.fill();
 
-            // Pedestrian Box moved to the RIGHT of the pole (so it points inward to the crosswalk)
+            // Pedestrian Box placed to the right of the pole (pointing toward crosswalk)
             ctx.fillStyle = colors.lightBox; ctx.fillRect(x + 18, y + 15, 26, 18);
             ctx.font = "bold 9px sans-serif"; ctx.textAlign = "center";
             if(trafficLight.state === 'red') { ctx.fillStyle = colors.line; ctx.fillText("WALK", x + 31, y + 27); } 
@@ -444,13 +457,13 @@
             for(let i=0; i<600; i+=30) { ctx.fillRect(i, 160, 15, 2); ctx.fillRect(i, 280, 15, 2); }
             ctx.fillStyle = '#fbbf24'; ctx.fillRect(0, 218, 600, 2); ctx.fillRect(0, 222, 600, 2);
 
-            // Crosswalks
+            // Crosswalks and Traffic Lights
             crosswalks.forEach(cw => {
                 ctx.fillStyle = colors.line; for(let i = 105; i < 335; i += 15) ctx.fillRect(cw.x, i, cw.w, 8);
                 ctx.fillRect(cw.x - 10, 100, 4, 115); ctx.fillRect(cw.x + cw.w + 6, 225, 4, 115);
                 
-                // Placed on the LEFT side of the crosswalk (cw.x is the left boundary of the crossing)
-                drawTrafficHUD(ctx, cw.x - 38, 40);
+                // Traffic light placed on the left side of crosswalk, directly on the double yellow line median (Y: 200)
+                drawTrafficHUD(ctx, cw.x - 38, 200);
             });
 
             // Draw Home
@@ -488,7 +501,7 @@
             ctx.globalAlpha = 1.0;
             floatingEmojis = floatingEmojis.filter(e => e.life > 0);
 
-            // Timer HUD (Moved to Bottom Right to clear up space for the top-left traffic lights)
+            // Timer HUD 
             ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.roundRect(470, 410, 120, 40, 8); ctx.fill();
             ctx.fillStyle = '#38bdf8'; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center";
             ctx.fillText(`Time: ${gameTimer.toFixed(1)}s`, 530, 436);
