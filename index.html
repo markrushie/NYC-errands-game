@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NYC Safe Crossing & Errands</title>
+    <title>Life & Work Simulator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { overscroll-behavior-y: contain; }
-        #simCanvas { touch-action: none; image-rendering: pixelated; }
+        #simCanvas { touch-action: none; image-rendering: pixelated; outline: none; }
         .dpad-btn {
             background: rgba(255,255,255,0.15);
             border: 2px solid rgba(255,255,255,0.3);
@@ -23,49 +23,70 @@
 <body class="bg-stone-900 text-stone-100 font-sans antialiased min-h-screen flex flex-col items-center justify-center p-4 md:p-8">
 
     <div class="w-full max-w-4xl flex flex-col items-center">
-        <div class="text-center mb-4">
-            <h1 class="text-3xl md:text-4xl font-extrabold text-sky-400 tracking-tight">NYC Errand Run</h1>
-            <p class="mt-2 text-stone-400 max-w-2xl mx-auto text-sm md:text-base leading-relaxed hidden md:block">
-                <strong>Run your errands, then head Home (🏡 top right)!</strong><br>
-                Step on the yellow door mats to enter a store. Wait for the <strong class="text-emerald-400">WALK</strong> sign. Your timer restarts if you get hit!
+        <div class="text-center mb-4 relative w-full">
+            <button id="btnBackMenu" onclick="showMenu()" class="absolute left-0 top-0 px-4 py-2 bg-stone-700 hover:bg-rose-500 rounded-xl font-bold hidden transition-colors shadow-md text-sm md:text-base z-50">
+                ← Quit
+            </button>
+            <h1 class="text-3xl md:text-4xl font-extrabold text-sky-400 tracking-tight mt-12 md:mt-0">Life & Work Simulator</h1>
+            <p id="headerDesc" class="mt-2 text-stone-400 max-w-2xl mx-auto text-sm md:text-base leading-relaxed hidden md:block">
+                Choose a simulation below to practice spatial navigation and task management.
             </p>
         </div>
         
         <!-- Game Canvas Container -->
         <div class="relative w-full border-4 border-stone-700 rounded-2xl overflow-hidden bg-stone-800 shadow-2xl" style="aspect-ratio: 30/23; max-height: 650px;">
-            <canvas id="simCanvas" width="600" height="460" class="absolute inset-0 w-full h-full object-contain"></canvas>
+            <canvas id="simCanvas" width="600" height="460" tabindex="0" class="absolute inset-0 w-full h-full object-contain hidden"></canvas>
             
             <!-- Advertising Overlay -->
-            <div id="adOverlay" class="absolute top-2 left-2 md:top-4 md:left-4 z-[60] animate-bounce pointer-events-none transition-opacity duration-500">
-                <!-- Mobile size: w-20 h-20 | Desktop size: w-32 h-32 -->
-                <img src="https://raw.githubusercontent.com/markrushie/NYC-errands-game/main/firstsitead.gif" alt="Advertisement" class="w-20 h-20 md:w-32 md:h-32 object-cover rounded-xl shadow-2xl border-2 border-stone-400">
+            <div id="adOverlay" class="absolute top-2 right-2 md:top-4 md:right-4 z-[60] animate-bounce pointer-events-none transition-opacity duration-500">
+                <img src="https://raw.githubusercontent.com/markrushie/NYC-errands-game/main/firstsitead.gif" alt="Advertisement" class="w-16 h-16 md:w-24 md:h-24 object-cover rounded-xl shadow-2xl border-2 border-stone-400">
             </div>
 
-            <!-- Start / Game Over Overlay -->
-            <div id="simOverlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center z-40 backdrop-blur-sm px-2">
-                <h2 id="simMessage" class="text-3xl md:text-5xl font-bold text-white mb-4 text-center px-2 drop-shadow-lg mt-12 md:mt-0">Ready to Run Errands?</h2>
-                <p id="simSubMessage" class="text-stone-300 mb-8 text-center px-2 text-sm md:text-lg">Use Arrow Keys, WASD, or Touch Controls to move.</p>
-                <button id="startBtn" onclick="beginGame()" class="px-6 py-3 md:px-8 md:py-4 bg-sky-500 hover:bg-sky-400 text-white text-lg md:text-xl font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg">
-                    Start Simulation
-                </button>
+            <!-- Main Menu Overlay -->
+            <div id="menuOverlay" class="absolute inset-0 bg-stone-900 flex flex-col items-center justify-center z-40 px-4 overflow-y-auto py-8">
+                <h2 class="text-3xl md:text-5xl font-extrabold text-white mb-6 text-center drop-shadow-lg">Select Module</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
+                    <!-- City Module -->
+                    <button onclick="startScene('city')" class="bg-stone-800 border-2 border-sky-500 hover:bg-sky-900 p-4 md:p-6 rounded-2xl transition-all transform hover:scale-105 text-left group flex flex-col h-full">
+                        <div class="text-4xl md:text-5xl mb-2 md:mb-4">🚦</div>
+                        <h3 class="text-xl md:text-2xl font-bold text-sky-300 mb-2 group-hover:text-white">Personal: City Errands</h3>
+                        <p class="text-stone-400 text-xs md:text-sm mt-auto">Navigate traffic, cross streets safely, and buy items at local stores before heading home.</p>
+                    </button>
+                    
+                    <!-- Office Module -->
+                    <button onclick="startScene('office')" class="bg-stone-800 border-2 border-emerald-500 hover:bg-emerald-900 p-4 md:p-6 rounded-2xl transition-all transform hover:scale-105 text-left group flex flex-col h-full">
+                        <div class="text-4xl md:text-5xl mb-2 md:mb-4">🏢</div>
+                        <h3 class="text-xl md:text-2xl font-bold text-emerald-300 mb-2 group-hover:text-white">Professional: Office</h3>
+                        <p class="text-stone-400 text-xs md:text-sm mt-auto">Get tasks from the Manager, visit IT, deploy workstations, and manage IT projects.</p>
+                    </button>
+                </div>
             </div>
 
-            <!-- Store Interaction Modal -->
-            <div id="storeModal" class="absolute inset-0 bg-black/60 hidden flex flex-col items-center justify-center z-50 backdrop-blur-sm">
-                <div class="bg-stone-800 p-6 rounded-2xl border-2 border-stone-500 text-center shadow-2xl max-w-sm w-full mx-4 transform transition-all">
-                    <div id="storeIcon" class="text-4xl mb-2">🏪</div>
-                    <h3 id="storeName" class="text-2xl font-bold text-white mb-6">Store Name</h3>
-                    <div class="flex flex-col gap-3">
-                        <button id="storeOpt1" class="px-4 py-3 bg-stone-700 hover:bg-sky-600 rounded-xl text-white font-bold transition-colors shadow-sm flex items-center justify-center gap-2 text-lg">Option 1</button>
-                        <button id="storeOpt2" class="px-4 py-3 bg-stone-700 hover:bg-sky-600 rounded-xl text-white font-bold transition-colors shadow-sm flex items-center justify-center gap-2 text-lg">Option 2</button>
-                        <button onclick="closeStore()" class="px-4 py-2 mt-4 text-stone-400 hover:text-white font-semibold transition-colors">Nevermind, Leave</button>
+            <!-- Interaction Modal -->
+            <div id="interactionModal" class="absolute inset-0 bg-black/75 hidden flex flex-col items-center justify-center z-50 backdrop-blur-sm px-4">
+                <div class="bg-stone-800 p-6 rounded-2xl border-2 border-stone-500 text-center shadow-2xl max-w-sm w-full transform transition-all">
+                    <div id="modalIcon" class="text-5xl mb-4">💬</div>
+                    <h3 id="modalTitle" class="text-2xl font-bold text-white mb-2">Title</h3>
+                    <p id="modalDesc" class="text-stone-300 mb-6 min-h-[40px] text-sm md:text-base">Description</p>
+                    <div id="modalButtons" class="flex flex-col gap-3">
+                        <!-- Buttons injected via JS -->
                     </div>
                 </div>
             </div>
+
+            <!-- Game Over / Retry Overlay -->
+            <div id="gameOverOverlay" class="absolute inset-0 bg-black/85 hidden flex flex-col items-center justify-center z-[45] backdrop-blur-sm px-2">
+                <h2 id="gameOverTitle" class="text-4xl md:text-5xl font-bold text-white mb-4 text-center px-2 drop-shadow-lg">Result</h2>
+                <p id="gameOverDesc" class="text-stone-300 mb-8 text-center px-2 text-sm md:text-lg">Details</p>
+                <button onclick="startScene(currentScene)" class="px-8 py-4 bg-sky-500 hover:bg-sky-400 text-white text-xl font-bold rounded-xl transition-all shadow-lg transform hover:scale-105">
+                    Try Again
+                </button>
+            </div>
         </div>
 
-        <!-- Mobile Controls (Outside Canvas Area) -->
-        <div class="mt-4 flex flex-col items-center gap-2 sm:hidden w-full max-w-sm bg-stone-800 p-4 rounded-2xl border-2 border-stone-700 shadow-xl">
+        <!-- Mobile Controls -->
+        <div id="mobileControls" class="mt-4 flex-col items-center gap-2 sm:hidden w-full max-w-sm bg-stone-800 p-4 rounded-2xl border-2 border-stone-700 shadow-xl hidden">
             <button class="dpad-btn" id="btn-up">↑</button>
             <div class="flex gap-16">
                 <button class="dpad-btn" id="btn-left">←</button>
@@ -73,220 +94,656 @@
             </div>
             <button class="dpad-btn" id="btn-down">↓</button>
         </div>
-
     </div>
 
     <script>
-        // --- WEB AUDIO API (SUCCESS SOUND) ---
-        function playSuccessMusic() {
+        // --- CORE GAME STATE ---
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        let currentScene = 'menu'; 
+        let gameState = 'idle'; 
+        let animationId;
+        let keys = {};
+        let lastFrameTime = 0;
+        let gameTimer = 0;
+        let floatingEmojis = [];
+        let player = { x: 0, y: 0, w: 20, h: 30, speed: 2.8 };
+
+        // --- CITY STATE VARIABLES ---
+        let vehicles = [];
+        let trafficLight = { state: 'green', timer: 0 };
+        const crosswalks = [ { x: 100, w: 40 }, { x: 280, w: 40 }, { x: 460, w: 40 } ];
+        const lanes = [ { y: 110, dir: 1 }, { y: 170, dir: 1 }, { y: 230, dir: -1 }, { y: 290, dir: -1 } ];
+
+        const homeLocation = { rect: { x: 480, y: 0, w: 100, h: 60 }, door: { x: 510, y: 60, w: 40, h: 15 }, color: '#065f46', name: 'Home' };
+        
+        const stores = [
+            { id: 'pizzeria', name: 'Pizzeria', type: 'top', pushDir: 'down', icon: '🍕', rect: { x: 140, y: 0, w: 100, h: 60 }, door: { x: 170, y: 60, w: 40, h: 15 }, color: '#dc2626' },
+            { id: 'jamaican', name: 'Jamaican Spot', type: 'top', pushDir: 'down', icon: '🍛', rect: { x: 310, y: 0, w: 100, h: 60 }, door: { x: 340, y: 60, w: 40, h: 15 }, color: '#16a34a' },
+            { id: 'bodega', name: 'Bodega', type: 'bottom', pushDir: 'up', icon: '🏪', rect: { x: 30, y: 380, w: 100, h: 80 }, door: { x: 60, y: 365, w: 40, h: 15 }, color: '#f59e0b' },
+            { id: 'laundry', name: 'Laundromat', type: 'bottom', pushDir: 'up', icon: '🧺', rect: { x: 180, y: 380, w: 100, h: 80 }, door: { x: 210, y: 365, w: 40, h: 15 }, color: '#0ea5e9' },
+            { id: 'cell', name: 'Cell Shop', type: 'bottom', pushDir: 'up', icon: '📱', rect: { x: 330, y: 380, w: 100, h: 80 }, door: { x: 360, y: 365, w: 40, h: 15 }, color: '#8b5cf6' }
+        ];
+
+        // --- OFFICE STATE VARIABLES ---
+        let officeTask = null; // State Machine
+        let carrying = null; // null, 'cart', 'cart_pkg', 'laptop'
+        let managerState = 0; 
+        
+        // Cart Parking Zone
+        const cartParking = { x: 530, y: 300, w: 40, h: 40, interact: true, id: 'parking' };
+        let cartActiveOnFloor = true;
+        
+        const officeRooms = [
+            { id: 'exec1', name: 'Exec Office', pushDir: 'down', x: 20, y: 20, w: 100, h: 80, door: {x: 50, y: 100, w: 40, h: 10}, color: '#334155' },
+            { id: 'manager', name: 'Manager', pushDir: 'down', interact: true, x: 250, y: 20, w: 100, h: 80, door: {x: 280, y: 100, w: 40, h: 10}, color: '#0f172a' },
+            { id: 'exec3', name: 'Exec Office', pushDir: 'down', x: 480, y: 20, w: 100, h: 80, door: {x: 510, y: 100, w: 40, h: 10}, color: '#334155' },
+            { id: 'it', name: 'IT Dept', pushDir: 'right', interact: true, x: 20, y: 180, w: 80, h: 100, door: {x: 100, y: 220, w: 10, h: 40}, color: '#0284c7' },
+            { id: 'mail', name: 'Mail Room', pushDir: 'left', interact: true, x: 500, y: 180, w: 80, h: 100, door: {x: 490, y: 220, w: 10, h: 40}, color: '#b45309' },
+            { id: 'meeting', name: 'Conference', pushDir: 'up', interact: true, x: 200, y: 360, w: 200, h: 80, door: {x: 280, y: 350, w: 40, h: 10}, color: '#4c1d95' }
+        ];
+        
+        const cubicles = [];
+        for(let r=0; r<2; r++) {
+            for(let c=0; c<5; c++) {
+                let isTarget = (r===0 && c===4); // Top right cubicle is the target desk
+                cubicles.push({ 
+                    x: 150 + (c*60), y: 160 + (r*100), w: 45, h: 45, 
+                    id: isTarget ? 'target_desk' : 'cubicle',
+                    interact: isTarget 
+                });
+            }
+        }
+
+        // --- AUDIO ---
+        function playMinorSuccessSound() {
             try {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContext) return; 
-                const ctx = new AudioContext();
-                
+                const actx = new (window.AudioContext || window.webkitAudioContext)();
                 const playNote = (freq, startTime, duration) => {
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(freq, ctx.currentTime + startTime);
-                    
-                    gain.gain.setValueAtTime(0.1, ctx.currentTime + startTime);
-                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startTime + duration);
-                    
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
-                    osc.start(ctx.currentTime + startTime);
-                    osc.stop(ctx.currentTime + startTime + duration);
+                    const osc = actx.createOscillator();
+                    const gain = actx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, actx.currentTime + startTime);
+                    gain.gain.setValueAtTime(0.1, actx.currentTime + startTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + startTime + duration);
+                    osc.connect(gain); gain.connect(actx.destination);
+                    osc.start(actx.currentTime + startTime); osc.stop(actx.currentTime + startTime + duration);
                 };
-                
-                // Triumphant Arpeggio (C major)
-                playNote(261.63, 0.0, 0.2); // C4
-                playNote(329.63, 0.15, 0.2); // E4
-                playNote(392.00, 0.3, 0.2); // G4
-                playNote(523.25, 0.45, 0.6); // C5 (held)
+                playNote(523.25, 0.0, 0.15); // C5
+                playNote(659.25, 0.1, 0.3);  // E5
             } catch(e) { console.log("Audio not supported."); }
         }
 
-        // --- INTERACTIVE CANVAS SIMULATION ---
-        const canvas = document.getElementById('simCanvas');
-        const ctx = canvas.getContext('2d');
-        let simActive = false;
-        let animationId;
-
-        // Game State Variables
-        let player, vehicles, trafficLight, keys, gameState;
-        let gameTimer = 0;
-        let lastFrameTime = 0;
-        let currentStore = null;
-        let floatingEmojis = [];
-        
-        // Colors
-        const colors = {
-            road: '#3f3f46', line: '#f8fafc', grass: '#14532d', sidewalk: '#a8a29e',
-            car1: '#e11d48', car2: '#2563eb', car3: '#16a34a', carLyft: '#ff00bf',
-            moped: '#f59e0b', bike: '#14b8a6',
-            lightBox: '#1c1917', redOn: '#ef4444', redOff: '#451a1a', 
-            yelOn: '#eab308', yelOff: '#42330a', grnOn: '#22c55e', grnOff: '#0f3d1e'
-        };
-
-        // Layout Geometry
-        const crosswalks = [ { x: 100, w: 40 }, { x: 280, w: 40 }, { x: 460, w: 40 } ];
-        const lanes = [
-            { y: 110, dir: 1 }, { y: 170, dir: 1 },
-            { y: 230, dir: -1 }, { y: 290, dir: -1 }
-        ];
-
-        // Store & Home Configurations
-        const homeLocation = {
-            rect: { x: 480, y: 0, w: 100, h: 60 },
-            door: { x: 510, y: 60, w: 40, h: 15 },
-            color: '#065f46', name: 'Home'
-        };
-
-        const stores = [
-            {
-                id: 'pizzeria', name: 'Pizzeria', type: 'top', icon: '🍕',
-                rect: { x: 140, y: 0, w: 100, h: 60 }, door: { x: 170, y: 60, w: 40, h: 15 },
-                color: '#dc2626', 
-                options: [ { text: 'Buy a Slice', emoji: '😋', icon: '🍕' }, { text: 'Buy a Pie', emoji: '😋', icon: '🍕' } ]
-            },
-            {
-                id: 'jamaican', name: 'Jamaican Spot', type: 'top', icon: '🍛',
-                rect: { x: 310, y: 0, w: 100, h: 60 }, door: { x: 340, y: 60, w: 40, h: 15 },
-                color: '#16a34a', 
-                options: [ { text: 'Buy a Patty', emoji: '😋', icon: '🥟' }, { text: 'Buy a Meal', emoji: '😋', icon: '🍛' } ]
-            },
-            {
-                id: 'bodega', name: 'Bodega', type: 'bottom', icon: '🏪',
-                rect: { x: 30, y: 380, w: 100, h: 80 }, door: { x: 60, y: 365, w: 40, h: 15 },
-                color: '#f59e0b', 
-                options: [ { text: 'Bacon Egg & Cheese', emoji: '😋', icon: '🥪' }, { text: 'Buy a Hero', emoji: '😋', icon: '🥖' } ]
-            },
-            {
-                id: 'laundry', name: 'Laundromat', type: 'bottom', icon: '🧺',
-                rect: { x: 180, y: 380, w: 100, h: 80 }, door: { x: 210, y: 365, w: 40, h: 15 },
-                color: '#0ea5e9', 
-                options: [ { text: 'Drop off Laundry', emoji: '🫧', icon: '🧺' }, { text: 'Pick up Laundry', emoji: '🫧', icon: '👕' } ]
-            },
-            {
-                id: 'cell', name: 'Cell Phone Shop', type: 'bottom', icon: '📱',
-                rect: { x: 330, y: 380, w: 100, h: 80 }, door: { x: 360, y: 365, w: 40, h: 15 },
-                color: '#8b5cf6', 
-                options: [ { text: 'Buy Cell Phone', emoji: '😁', icon: '📱' }, { text: 'Get a Tablet', emoji: '😁', icon: '💻' } ]
-            }
-        ];
-
-        function initializeState() {
-            // Start right outside the bodega on the bottom sidewalk
-            player = { x: 70, y: 320, w: 20, h: 30, speed: 2.8 };
-            vehicles = [];
-            floatingEmojis = [];
-            trafficLight = { state: 'green', timer: 0, intervals: { green: 300, yellow: 100, red: 400 } }; 
-            
-            // Reset keys safely
-            keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, w: false, a: false, s: false, d: false };
-            
-            gameState = 'idle'; 
-            gameTimer = 0;
+        function playSuccessMusic() {
+            try {
+                const actx = new (window.AudioContext || window.webkitAudioContext)();
+                const playNote = (freq, startTime, duration) => {
+                    const osc = actx.createOscillator();
+                    const gain = actx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, actx.currentTime + startTime);
+                    gain.gain.setValueAtTime(0.1, actx.currentTime + startTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + startTime + duration);
+                    osc.connect(gain); gain.connect(actx.destination);
+                    osc.start(actx.currentTime + startTime); osc.stop(actx.currentTime + startTime + duration);
+                };
+                playNote(261.63, 0.0, 0.2); playNote(329.63, 0.15, 0.2); 
+                playNote(392.00, 0.3, 0.2); playNote(523.25, 0.45, 0.6); 
+            } catch(e) { console.log("Audio not supported."); }
         }
 
-        function beginGame() {
-            document.getElementById('simOverlay').classList.add('hidden');
+        // --- SCENE MANAGEMENT ---
+        function showMenu() {
+            currentScene = 'menu';
+            gameState = 'idle';
+            document.getElementById('menuOverlay').classList.remove('hidden');
+            document.getElementById('simCanvas').classList.add('hidden');
+            document.getElementById('btnBackMenu').classList.add('hidden');
+            document.getElementById('gameOverOverlay').classList.add('hidden');
+            document.getElementById('headerDesc').textContent = "Choose a simulation below to practice spatial navigation and task management.";
             
-            // Hide the ad overlay only when the user clicks Start
+            const mc = document.getElementById('mobileControls');
+            if(mc) { mc.classList.add('hidden'); mc.classList.remove('flex'); }
+        }
+
+        function startScene(scene) {
+            currentScene = scene;
+            document.getElementById('menuOverlay').classList.add('hidden');
+            document.getElementById('simCanvas').classList.remove('hidden');
+            document.getElementById('btnBackMenu').classList.remove('hidden');
+            document.getElementById('gameOverOverlay').classList.add('hidden');
+            
+            const mc = document.getElementById('mobileControls');
+            if(mc) { mc.classList.remove('hidden'); mc.classList.add('flex'); }
+            
             const ad = document.getElementById('adOverlay');
             if (ad && !ad.classList.contains('opacity-0')) {
                 ad.classList.add('opacity-0');
                 setTimeout(() => ad.style.display = 'none', 500); 
             }
 
-            initializeState();
+            keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, w: false, a: false, s: false, d: false };
+            floatingEmojis = [];
+            gameTimer = 0;
             gameState = 'playing';
-            simActive = true;
             lastFrameTime = Date.now();
-            window.focus(); // Ensure game canvas area responds to keys immediately
-            
-            // Initial traffic spread out
-            spawnVehicle(1, 40, true); spawnVehicle(2, -50, true);
-            spawnVehicle(3, 400, true); spawnVehicle(4, 550, true);
-        }
+            canvas.focus();
 
-        function endGame(message, colorClass, subMessage) {
-            gameState = 'over';
-            simActive = false;
-            // Clear keys safely
-            keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, w: false, a: false, s: false, d: false };
-            
-            const overlay = document.getElementById('simOverlay');
-            document.getElementById('simMessage').textContent = message;
-            document.getElementById('simMessage').className = `text-4xl md:text-5xl font-bold mb-2 text-center px-4 drop-shadow-lg ${colorClass}`;
-            
-            if(message.includes("Safe")) {
-                document.getElementById('simSubMessage').innerHTML = `${subMessage}<br><span class="text-sky-300 font-bold text-2xl mt-2 block">Total Time: ${gameTimer.toFixed(1)}s</span>`;
-                document.getElementById('startBtn').textContent = "Play Again";
-            } else {
-                document.getElementById('simSubMessage').textContent = subMessage;
-                document.getElementById('startBtn').textContent = "Restart Timer";
+            if (scene === 'city') {
+                document.getElementById('headerDesc').innerHTML = "<strong>City Errands:</strong> Step on yellow door mats to enter stores. Wait for the <strong class='text-emerald-400'>WALK</strong> sign. Head Home (🏡) when done.";
+                player = { x: 70, y: 320, w: 20, h: 30, speed: 2.8 };
+                vehicles = [];
+                trafficLight = { state: 'green', timer: 0, intervals: { green: 300, yellow: 100, red: 400 } }; 
+                spawnVehicle(1, 40, true); spawnVehicle(2, -50, true);
+                spawnVehicle(3, 400, true); spawnVehicle(4, 550, true);
+            } else if (scene === 'office') {
+                document.getElementById('headerDesc').innerHTML = "<strong>Office Space:</strong> Pick up and drop off equipment. Go to the Manager for tasks.";
+                player = { x: 290, y: 250, w: 20, h: 30, speed: 2.8 }; 
+                officeTask = null;
+                carrying = null;
+                cartActiveOnFloor = true;
+                managerState = 0;
             }
-            
-            overlay.classList.remove('hidden');
         }
 
-        // --- STORE LOGIC ---
-        function openStore(store) {
-            gameState = 'store';
-            currentStore = store;
-            // Clear movement keys safely
-            keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, w: false, a: false, s: false, d: false };
-            
-            const modal = document.getElementById('storeModal');
-            document.getElementById('storeIcon').textContent = store.icon;
-            document.getElementById('storeName').textContent = store.name;
-            
-            const btn1 = document.getElementById('storeOpt1');
-            btn1.innerHTML = `<span class="text-2xl">${store.options[0].icon}</span> ${store.options[0].text}`;
-            btn1.onclick = () => purchase(store.options[0]);
+        // --- INTERACTION MODAL ---
+        let activeRoom = null;
 
-            const btn2 = document.getElementById('storeOpt2');
-            btn2.innerHTML = `<span class="text-2xl">${store.options[1].icon}</span> ${store.options[1].text}`;
-            btn2.onclick = () => purchase(store.options[1]);
+        function showModal(roomObj, title, desc, icon, buttons) {
+            gameState = 'modal';
+            activeRoom = roomObj;
+            keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, w: false, a: false, s: false, d: false }; 
+            
+            const modal = document.getElementById('interactionModal');
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalDesc').textContent = desc;
+            document.getElementById('modalIcon').textContent = icon;
+            
+            const btnContainer = document.getElementById('modalButtons');
+            btnContainer.innerHTML = ''; 
+            
+            buttons.forEach(btn => {
+                const b = document.createElement('button');
+                b.className = 'px-4 py-3 bg-stone-700 hover:bg-sky-600 rounded-xl text-white font-bold transition-colors shadow-sm text-base md:text-lg w-full';
+                b.innerHTML = btn.text;
+                b.onclick = () => {
+                    if(btn.action) btn.action();
+                    closeModal();
+                };
+                btnContainer.appendChild(b);
+            });
+            
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'px-4 py-2 mt-2 text-stone-400 hover:text-white font-semibold transition-colors text-sm md:text-base';
+            cancelBtn.textContent = "Leave / Close";
+            cancelBtn.onclick = closeModal;
+            btnContainer.appendChild(cancelBtn);
 
             modal.classList.remove('hidden');
             modal.classList.add('flex');
         }
 
-        function purchase(option) {
-            floatingEmojis.push({ char: option.emoji, x: player.x, y: player.y - 10, life: 60, maxLife: 60 });
-            closeStore();
-        }
-
-        function closeStore() {
-            const modal = document.getElementById('storeModal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
+        function closeModal() {
+            document.getElementById('interactionModal').classList.add('hidden');
+            document.getElementById('interactionModal').classList.remove('flex');
             
-            // Remove focus from the buttons inside the modal so the browser registers keyboard arrows again
-            if (document.activeElement) {
-                document.activeElement.blur();
+            if(document.activeElement) document.activeElement.blur();
+            canvas.focus();
+            
+            if (activeRoom && activeRoom.pushDir) {
+                if (activeRoom.pushDir === 'down') player.y = activeRoom.door.y + activeRoom.door.h + 2;
+                else if (activeRoom.pushDir === 'up') player.y = activeRoom.door.y - player.h - 2;
+                else if (activeRoom.pushDir === 'right') player.x = activeRoom.door.x + activeRoom.door.w + 2;
+                else if (activeRoom.pushDir === 'left') player.x = activeRoom.door.x - player.w - 2;
+            } else if (activeRoom && activeRoom.id === 'parking') {
+                player.x -= 25; 
+            } else if (activeRoom && activeRoom.id === 'target_desk') {
+                player.y += 20; 
             }
-            window.focus();
             
-            // Bounce player slightly away from the door so they don't instantly re-enter
-            if (currentStore.type === 'top') player.y += 15;
-            else player.y -= 15;
-            
-            currentStore = null;
+            activeRoom = null;
             gameState = 'playing';
-            lastFrameTime = Date.now(); 
+            lastFrameTime = Date.now();
         }
 
-        // --- INPUT LOGIC ---
+        function spawnEmoji(emoji) {
+            floatingEmojis.push({ char: emoji, x: player.x, y: player.y - 10, life: 60, maxLife: 60 });
+        }
+
+        // --- CITY LOGIC ---
+        function triggerCityStore(store) {
+            let actions = [];
+            if(store.id === 'pizzeria') actions = [{text:'Buy Slice 🍕', action:()=>spawnEmoji('😋')}];
+            if(store.id === 'jamaican') actions = [{text:'Buy Patty 🥟', action:()=>spawnEmoji('😋')}];
+            if(store.id === 'bodega') actions = [{text:'Bacon Egg Cheese 🥪', action:()=>spawnEmoji('😋')}];
+            if(store.id === 'laundry') actions = [{text:'Drop Laundry 🧺', action:()=>spawnEmoji('🫧')}];
+            if(store.id === 'cell') actions = [{text:'Buy Phone 📱', action:()=>spawnEmoji('😁')}];
+            
+            showModal(store, store.name, "Welcome! What do you need?", store.icon, actions);
+        }
+
+        function spawnVehicle(forcedLane = null, forcedX = null, bypassChance = false) {
+            if(!bypassChance && Math.random() > 0.025) return; 
+            const laneIndex = forcedLane ? forcedLane - 1 : Math.floor(Math.random() * lanes.length);
+            const lane = lanes[laneIndex];
+            const x = forcedX !== null ? forcedX : (lane.dir === 1 ? -80 : 680);
+            
+            const tr = Math.random();
+            let type = 'car', w = 55, h = 32, speed = 2+Math.random()*2, color = ['#e11d48', '#2563eb', '#16a34a', '#ff00bf'][Math.floor(Math.random()*4)];
+            if (tr > 0.7 && tr <= 0.9) { type = 'moped'; w = 30; h = 16; speed = 3+Math.random()*2; color = '#f59e0b'; }
+            else if (tr > 0.9) { type = 'bike'; w = 30; h = 12; speed = 1.5+Math.random()*1.5; color = '#14b8a6'; }
+
+            let safe = true;
+            vehicles.forEach(v => { if(v.laneIndex === laneIndex && Math.abs(v.x - x) < 80) safe = false; });
+            if(safe) vehicles.push({ x, y: lane.y, w, h, speed, dir: lane.dir, laneIndex, type, color });
+        }
+
+        // --- OFFICE LOGIC ---
+        function triggerOfficeInteraction(entity) {
+            if (entity.id === 'manager') {
+                // If Manager is currently in the conference room during the start of a project
+                if (officeTask === 'proj_start') {
+                    showModal(entity, "Manager's Office", "The office is empty. The Manager is waiting for you in the Conference Room.", "🚪", []);
+                    return;
+                }
+
+                if (officeTask === null) {
+                    const tasks = ['project', 'package', 'onboard'];
+                    const currentTaskType = tasks[managerState % tasks.length];
+                    
+                    let msg = "";
+                    if(currentTaskType === 'project') {
+                        officeTask = 'proj_start';
+                        msg = "There is a meeting with the IT department. We are going to review a new EDR deployment and adding new printers with secure printing features. There are actionable items and I want you there.";
+                        showModal(entity, "Manager", msg, "👔", [{ text: "Heading to the Conference Room.", action: () => spawnEmoji('👍') }]);
+                    }
+                    else if(currentTaskType === 'package') {
+                        officeTask = 'pkg_start';
+                        msg = "I need you to get a heavy package from the Mail Room. Don't carry it, grab the cart!";
+                        showModal(entity, "Manager", msg, "👔", [{ text: "I'm on it!", action: () => spawnEmoji('👍') }]);
+                    }
+                    else if(currentTaskType === 'onboard') {
+                        officeTask = 'onb_start';
+                        msg = "We have a new hire. Get a configured laptop from IT and deploy it at the empty cubicle.";
+                        showModal(entity, "Manager", msg, "👔", [{ text: "I'm on it!", action: () => spawnEmoji('👍') }]);
+                    }
+                } 
+                else if (officeTask === 'proj_edr_done') {
+                    showModal(entity, "Manager", "Good job securing that workstation. Next goal: Head over to the Mail Room to configure the new secure network printers.", "👔", [{ 
+                        text: "Understood.", action: () => { officeTask = 'proj_printer'; spawnEmoji('👍'); } 
+                    }]);
+                }
+                else if (officeTask === 'proj_printer_done') {
+                    playSuccessMusic();
+                    managerState++;
+                    officeTask = null;
+                    showModal(entity, "Manager", "Outstanding work! The IT deployment project is a complete success. Take a breather.", "🏆", [{ text: "Thank you!", action: () => spawnEmoji('😎') }]);
+                }
+                else if (officeTask === 'pkg_done' || officeTask === 'onb_done') {
+                    playSuccessMusic();
+                    managerState++;
+                    officeTask = null;
+                    showModal(entity, "Manager", "Great work. Take a breather, then come back for your next task.", "✅", [{ text: "Thanks!", action: () => spawnEmoji('😎') }]);
+                } 
+                else if (officeTask === 'pkg_deliver' && carrying === 'cart_pkg') {
+                    playMinorSuccessSound();
+                    showModal(entity, "Manager", "Thanks for the package! Please return the cart to the parking area now.", "📦", [{ 
+                        text: "Will do.", action: () => { officeTask = 'pkg_return'; carrying = 'cart'; spawnEmoji('👍'); } 
+                    }]);
+                }
+                else {
+                    showModal(entity, "Manager", "Why are you back here? You haven't finished your task yet!", "🤨", [{ text: "Sorry, going now." }]);
+                }
+            } 
+            else if (entity.id === 'meeting') {
+                if (officeTask === 'proj_start') {
+                    showModal(entity, "Conference Room", "Manager: Thanks for joining. Your first actionable item is to deploy the new EDR to the target workstation. Let's get to work.", "📊", [{ 
+                        text: "Deploy EDR", action: () => { officeTask = 'proj_edr'; spawnEmoji('💻'); } 
+                    }]);
+                } else {
+                    showModal(entity, "Conference Room", "The room is empty.", "🪑", []);
+                }
+            }
+            else if (entity.id === 'mail') {
+                if (officeTask === 'proj_printer') {
+                    showModal(entity, "Mail Room Printers", "Accessing printer network interface... Secure printing features enabled.", "🖨️", [{ 
+                        text: "Complete Setup", action: () => { officeTask = 'proj_printer_done'; playMinorSuccessSound(); spawnEmoji('🖨️'); } 
+                    }]);
+                }
+                else if (officeTask === 'pkg_start') {
+                    if (carrying === 'cart') {
+                        showModal(entity, "Mail Room", "Here is the package. Good thing you brought the cart!", "📦", [{ 
+                            text: "Load Cart", action: () => { officeTask = 'pkg_deliver'; carrying = 'cart_pkg'; playMinorSuccessSound(); spawnEmoji('📦'); } 
+                        }]);
+                    } else if (carrying !== null) {
+                        showModal(entity, "Mail Room", "You're already carrying something. Put it down first.", "🛑", []);
+                    } else {
+                        showModal(entity, "Mail Room", "This package is too heavy to carry. Go find the rolling cart!", "🛑", [{ text: "Oops, I'll find it." }]);
+                    }
+                } else {
+                    showModal(entity, "Mail Room", "Nothing for you here today.", "📭", []);
+                }
+            }
+            else if (entity.id === 'it') {
+                if (officeTask === 'onb_start') {
+                    if (carrying === null) {
+                        showModal(entity, "IT Help Desk", "Here is the new laptop. Take it to the empty cubicle.", "💻", [{ 
+                            text: "Take Laptop", action: () => { officeTask = 'onb_deploy'; carrying = 'laptop'; playMinorSuccessSound(); spawnEmoji('💻'); } 
+                        }]);
+                    } else {
+                        showModal(entity, "IT Help Desk", "Your hands are full. Drop what you're holding first.", "🛑", []);
+                    }
+                } else {
+                    showModal(entity, "IT Help Desk", "Did you turn it off and on again?", "🔌", []);
+                }
+            }
+            else if (entity.id === 'target_desk') {
+                if (officeTask === 'proj_edr') {
+                    showModal(entity, "Target Workstation", "Initiating EDR deployment and application update... Installation successful.", "🛡️", [{ 
+                        text: "Finish Install", action: () => { officeTask = 'proj_edr_done'; playMinorSuccessSound(); spawnEmoji('🛡️'); } 
+                    }]);
+                }
+                else if (officeTask === 'onb_deploy' && carrying === 'laptop') {
+                    showModal(entity, "Empty Cubicle", "Deploy the workstation here?", "🖥️", [{ 
+                        text: "Setup Equipment", action: () => { officeTask = 'onb_done'; carrying = null; playMinorSuccessSound(); spawnEmoji('🖥️'); } 
+                    }]);
+                } else {
+                    showModal(entity, "Empty Cubicle", "This desk is currently unoccupied.", "🪑", []);
+                }
+            }
+            else if (entity.id === 'parking') {
+                if (carrying === 'cart' || carrying === 'cart_pkg') {
+                    showModal(entity, "Equipment Parking", "Return the cart to the parking area?", "🅿️", [{ 
+                        text: "Drop Cart", action: () => { 
+                            carrying = null; 
+                            cartActiveOnFloor = true; 
+                            if (officeTask === 'pkg_return') officeTask = 'pkg_done';
+                            playMinorSuccessSound();
+                            spawnEmoji('✅'); 
+                        } 
+                    }]);
+                }
+            }
+        }
+
+        function isColliding(a, b) {
+            return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+        }
+
+        // --- UPDATE LOOP ---
+        function update() {
+            if(gameState !== 'playing') return;
+            let now = Date.now(); gameTimer += (now - lastFrameTime) / 1000; lastFrameTime = now;
+
+            // Common Player Movement
+            let prevX = player.x, prevY = player.y;
+            if(keys.ArrowUp || keys.w) player.y -= player.speed;
+            if(keys.ArrowDown || keys.s) player.y += player.speed;
+            if(keys.ArrowLeft || keys.a) player.x -= player.speed;
+            if(keys.ArrowRight || keys.d) player.x += player.speed;
+            
+            player.x = Math.max(0, Math.min(600 - player.w, player.x));
+            player.y = Math.max(0, Math.min(460 - player.h, player.y));
+
+            if (currentScene === 'city') updateCity(prevX, prevY);
+            else if (currentScene === 'office') updateOffice(prevX, prevY);
+        }
+
+        function updateCity(px, py) {
+            trafficLight.timer++;
+            if(trafficLight.state === 'green' && trafficLight.timer > trafficLight.intervals.green) { trafficLight.state = 'yellow'; trafficLight.timer = 0; }
+            else if(trafficLight.state === 'yellow' && trafficLight.timer > trafficLight.intervals.yellow) { trafficLight.state = 'red'; trafficLight.timer = 0; }
+            else if(trafficLight.state === 'red' && trafficLight.timer > trafficLight.intervals.red) { trafficLight.state = 'green'; trafficLight.timer = 0; }
+
+            if (isColliding(player, homeLocation.door)) {
+                playSuccessMusic();
+                gameOver("Safe at Home!", "text-emerald-400", "You successfully finished your errands."); return;
+            }
+            if (isColliding(player, homeLocation.rect)) player.y = homeLocation.rect.y + homeLocation.rect.h;
+
+            stores.forEach(store => {
+                if (isColliding(player, store.door)) triggerCityStore(store);
+                if (isColliding(player, store.rect)) {
+                    if (store.type === 'top') player.y = store.rect.y + store.rect.h;
+                    else player.y = store.rect.y - player.h;
+                }
+            });
+
+            spawnVehicle();
+            vehicles.forEach((v, i) => {
+                let shouldStop = false;
+                if(trafficLight.state !== 'green') {
+                    if(v.dir === 1) {
+                        let nextCw = crosswalks.find(cw => cw.x > v.x + v.w);
+                        if (nextCw && (v.x + v.w < nextCw.x - 10) && (v.x + v.w + v.speed >= nextCw.x - 10 - 20)) shouldStop = true;
+                    } else {
+                        let nextCw = [...crosswalks].reverse().find(cw => cw.x + cw.w < v.x);
+                        if (nextCw && (v.x > nextCw.x + nextCw.w + 10) && (v.x - v.speed <= nextCw.x + nextCw.w + 10 + 20)) shouldStop = true;
+                    }
+                }
+                vehicles.forEach((other, j) => {
+                    if(i !== j && v.laneIndex === other.laneIndex) {
+                        if(v.dir === 1 && other.x > v.x && (other.x - (v.x + v.w)) < 20) shouldStop = true;
+                        if(v.dir === -1 && v.x > other.x && (v.x - (other.x + other.w)) < 20) shouldStop = true;
+                    }
+                });
+                if(!shouldStop) v.x += v.speed * v.dir;
+
+                if(player.x+3 < v.x+v.w && player.x+player.w-3 > v.x && player.y+3 < v.y+v.h && player.y+player.h-3 > v.y) {
+                    gameOver("Hit by Traffic!", "text-rose-500", "Watch the traffic and wait for the WALK signal.");
+                }
+            });
+            vehicles = vehicles.filter(v => v.x > -150 && v.x < 750);
+        }
+
+        function updateOffice(px, py) {
+            // Pick up Cart from floor
+            if (cartActiveOnFloor && carrying === null && isColliding(player, {x: cartParking.x, y: cartParking.y, w: 20, h: 20})) {
+                cartActiveOnFloor = false;
+                carrying = 'cart';
+                spawnEmoji('🛒');
+            }
+
+            // Door / Interaction Triggers
+            officeRooms.forEach(rm => { if (rm.interact && isColliding(player, rm.door)) triggerOfficeInteraction(rm); });
+            
+            // Parking Zone Trigger
+            if (isColliding(player, cartParking)) {
+                if (carrying === 'cart' || carrying === 'cart_pkg') triggerOfficeInteraction(cartParking);
+            }
+
+            // Target Cubicle Trigger
+            cubicles.forEach(cub => {
+                if (cub.interact && isColliding(player, cub)) triggerOfficeInteraction(cub);
+            });
+
+            // Solid Walls (Rooms)
+            officeRooms.forEach(rm => {
+                if (isColliding(player, rm)) {
+                    if(py >= rm.y + rm.h) player.y = rm.y + rm.h; 
+                    else if(py + player.h <= rm.y) player.y = rm.y - player.h; 
+                    else if(px >= rm.x + rm.w) player.x = rm.x + rm.w; 
+                    else if(px + player.w <= rm.x) player.x = rm.x - player.w; 
+                }
+            });
+
+            // Solid Walls (Cubicles)
+            cubicles.forEach(cub => { 
+                if (isColliding(player, cub)) {
+                    if(py >= cub.y + cub.h) player.y = cub.y + cub.h;
+                    else if(py + player.h <= cub.y) player.y = cub.y - player.h;
+                    else if(px >= cub.x + cub.w) player.x = cub.x + cub.w;
+                    else if(px + player.w <= cub.x) player.x = cub.x - player.w;
+                }
+            });
+        }
+
+        function gameOver(title, color, desc) {
+            gameState = 'over';
+            keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, w: false, a: false, s: false, d: false };
+            const overlay = document.getElementById('gameOverOverlay');
+            document.getElementById('gameOverTitle').textContent = title;
+            document.getElementById('gameOverTitle').className = `text-4xl md:text-5xl font-bold mb-4 text-center px-2 drop-shadow-lg ${color}`;
+            document.getElementById('gameOverDesc').innerHTML = `${desc}<br><span class="text-sky-300 font-bold text-2xl mt-2 block">Time: ${gameTimer.toFixed(1)}s</span>`;
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+        }
+
+        // --- DRAWING FUNCTIONS ---
+        function draw() {
+            ctx.clearRect(0, 0, 600, 460);
+            if (currentScene === 'city') drawCity();
+            else if (currentScene === 'office') drawOffice();
+            
+            if (currentScene !== 'menu') {
+                drawPerson(ctx, player.x, player.y, player.w, player.h, carrying);
+                floatingEmojis.forEach(e => {
+                    ctx.globalAlpha = e.life / e.maxLife; ctx.font = "28px sans-serif"; ctx.textAlign = 'center';
+                    ctx.fillText(e.char, e.x + 10, e.y); e.y -= 0.8; e.life--;
+                });
+                ctx.globalAlpha = 1.0;
+                floatingEmojis = floatingEmojis.filter(e => e.life > 0);
+
+                // HUD
+                ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.roundRect(10, 10, currentScene==='office'?340:120, 40, 8); ctx.fill();
+                ctx.fillStyle = '#38bdf8'; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "left";
+                ctx.fillText(`Time: ${gameTimer.toFixed(1)}s`, 20, 36);
+                
+                if (currentScene === 'office') {
+                    let taskText = "Task: See Manager";
+                    if (officeTask === 'proj_start') taskText = "Task: Attend IT Meeting";
+                    else if (officeTask === 'proj_edr') taskText = "Task: Deploy EDR at Target Cubicle";
+                    else if (officeTask === 'proj_edr_done') taskText = "Task: Report EDR Status to Manager";
+                    else if (officeTask === 'proj_printer') taskText = "Task: Configure Printers in Mail Room";
+                    else if (officeTask === 'proj_printer_done') taskText = "Task: Report Project Complete to Manager";
+                    else if (officeTask === 'pkg_start' || officeTask === 'pkg_deliver') taskText = "Task: Get Package";
+                    else if (officeTask === 'pkg_return') taskText = "Task: Return Cart to Parking";
+                    else if (officeTask === 'onb_start') taskText = "Task: Get Laptop from IT";
+                    else if (officeTask === 'onb_deploy') taskText = "Task: Setup Cubicle Workstation";
+                    else if (officeTask === 'pwd_start') taskText = "Task: Go to IT";
+                    else if (officeTask === 'mtg_start') taskText = "Task: Attend Meeting";
+                    else if (officeTask === 'pkg_done' || officeTask === 'onb_done' || officeTask === 'pwd_done' || officeTask === 'mtg_done') taskText = "Task: Report back to Manager";
+                    
+                    ctx.fillStyle = '#fde047';
+                    ctx.fillText(taskText, 120, 36);
+                }
+            }
+        }
+
+        function drawCity() {
+            ctx.fillStyle = '#14532d'; ctx.fillRect(0, 0, 600, 460); // Grass
+            ctx.fillStyle = '#a8a29e'; ctx.fillRect(0, 0, 600, 100); ctx.fillRect(0, 340, 600, 120); // Sidewalks
+            ctx.fillStyle = '#3f3f46'; ctx.fillRect(0, 100, 600, 240); // Road
+            ctx.fillStyle = '#f8fafc';
+            for(let i=0; i<600; i+=30) { ctx.fillRect(i, 160, 15, 2); ctx.fillRect(i, 280, 15, 2); }
+            ctx.fillStyle = '#fbbf24'; ctx.fillRect(0, 218, 600, 2); ctx.fillRect(0, 222, 600, 2);
+
+            crosswalks.forEach(cw => {
+                ctx.fillStyle = '#f8fafc'; for(let i=105; i<335; i+=15) ctx.fillRect(cw.x, i, cw.w, 8);
+                ctx.fillRect(cw.x-10, 100, 4, 115); ctx.fillRect(cw.x+cw.w+6, 225, 4, 115);
+                let tx = cw.x - 38, ty = 200;
+                ctx.fillStyle = '#1c1917'; ctx.fillRect(tx, ty, 16, 40); ctx.fillRect(tx+6, ty+40, 4, 15);
+                ctx.beginPath(); ctx.arc(tx+8, ty+8, 4, 0, Math.PI*2); ctx.fillStyle = trafficLight.state === 'red' ? '#ef4444' : '#451a1a'; ctx.fill();
+                ctx.beginPath(); ctx.arc(tx+8, ty+20, 4, 0, Math.PI*2); ctx.fillStyle = trafficLight.state === 'yellow' ? '#eab308' : '#42330a'; ctx.fill();
+                ctx.beginPath(); ctx.arc(tx+8, ty+32, 4, 0, Math.PI*2); ctx.fillStyle = trafficLight.state === 'green' ? '#22c55e' : '#0f3d1e'; ctx.fill();
+                ctx.fillStyle = '#1c1917'; ctx.fillRect(tx+18, ty+15, 26, 18);
+                ctx.font = "bold 9px sans-serif"; ctx.textAlign = "center";
+                if(trafficLight.state === 'red') { ctx.fillStyle = '#f8fafc'; ctx.fillText("WALK", tx+31, ty+27); } 
+                else { ctx.fillStyle = '#eab308'; ctx.fillText("WAIT", tx+31, ty+27); }
+            });
+
+            ctx.fillStyle = homeLocation.color; ctx.fillRect(homeLocation.rect.x, homeLocation.rect.y, homeLocation.rect.w, homeLocation.rect.h);
+            ctx.fillStyle = '#fde047'; ctx.fillRect(homeLocation.door.x, homeLocation.door.y, homeLocation.door.w, homeLocation.door.h);
+            ctx.fillStyle = 'white'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(homeLocation.name, homeLocation.rect.x + homeLocation.rect.w/2, homeLocation.rect.y + 35);
+
+            stores.forEach(s => {
+                ctx.fillStyle = s.color; ctx.fillRect(s.rect.x, s.rect.y, s.rect.w, s.rect.h);
+                ctx.fillStyle = 'rgba(0,0,0,0.2)'; for(let i=0; i<s.rect.w; i+=10) ctx.fillRect(s.rect.x+i, s.rect.y+(s.type==='top'?s.rect.h-15:0), 5, 15);
+                ctx.fillStyle = '#fde047'; ctx.fillRect(s.door.x, s.door.y, s.door.w, s.door.h);
+                ctx.fillStyle = 'white'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(s.name, s.rect.x+s.rect.w/2, s.rect.y+30);
+            });
+
+            vehicles.forEach(v => {
+                if (v.type === 'car') {
+                    ctx.fillStyle = v.color; ctx.beginPath(); ctx.roundRect(v.x, v.y, v.w, v.h, 6); ctx.fill();
+                    ctx.fillStyle = '#9ca3af'; if(v.dir===1){ctx.fillRect(v.x+38,v.y+4,10,24);ctx.fillRect(v.x+8,v.y+4,25,24);}else{ctx.fillRect(v.x+7,v.y+4,10,24);ctx.fillRect(v.x+22,v.y+4,25,24);}
+                } else if (v.type === 'moped') {
+                    ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(v.x+6, v.y+v.h, 4, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(v.x+v.w-6, v.y+v.h, 4, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = v.color; ctx.fillRect(v.x+4, v.y+6, v.w-8, 8);
+                    ctx.fillStyle = '#ef4444'; ctx.fillRect(v.x+(v.dir===1?6:14), v.y-4, 10, 12); ctx.fillStyle = '#fbbf24'; ctx.beginPath(); ctx.arc(v.x+(v.dir===1?11:19), v.y-5, 4, 0, Math.PI*2); ctx.fill();
+                } else {
+                    ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(v.x+5, v.y+v.h, 5, 0, Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.arc(v.x+v.w-5, v.y+v.h, 5, 0, Math.PI*2); ctx.stroke();
+                    ctx.strokeStyle = v.color; ctx.beginPath(); ctx.moveTo(v.x+5, v.y+v.h); ctx.lineTo(v.x+15, v.y+6); ctx.lineTo(v.x+v.w-5, v.y+v.h); ctx.stroke(); ctx.beginPath(); ctx.moveTo(v.x+10, v.y+6); ctx.lineTo(v.x+20, v.y+6); ctx.stroke();
+                    ctx.fillStyle = '#3b82f6'; ctx.fillRect(v.x+(v.dir===1?10:15), v.y-2, 6, 8); ctx.fillStyle = '#fca5a5'; ctx.beginPath(); ctx.arc(v.x+(v.dir===1?13:18), v.y-4, 3, 0, Math.PI*2); ctx.fill();
+                }
+            });
+        }
+
+        function drawOffice() {
+            ctx.fillStyle = '#cbd5e1'; ctx.fillRect(0, 0, 600, 460); // Carpet
+
+            // Cart Parking Area
+            ctx.strokeStyle = '#fde047'; ctx.setLineDash([5, 5]); ctx.lineWidth = 2;
+            ctx.strokeRect(cartParking.x, cartParking.y, cartParking.w, cartParking.h);
+            ctx.setLineDash([]);
+            ctx.fillStyle = 'rgba(253, 224, 71, 0.2)'; ctx.fillRect(cartParking.x, cartParking.y, cartParking.w, cartParking.h);
+            ctx.fillStyle = '#fde047'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('PARK', cartParking.x+20, cartParking.y+25);
+
+            // Rooms
+            officeRooms.forEach(rm => {
+                ctx.fillStyle = rm.color; ctx.fillRect(rm.x, rm.y, rm.w, rm.h);
+                ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(rm.x+5, rm.y+5, rm.w-10, rm.h-10); // Glass effect
+                ctx.fillStyle = rm.interact ? '#fde047' : '#94a3b8'; ctx.fillRect(rm.door.x, rm.door.y, rm.door.w, rm.door.h);
+                ctx.fillStyle = 'white'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+                
+                // Show where manager is
+                if (rm.id === 'manager' && officeTask !== 'proj_start') {
+                    ctx.fillText(rm.name + ' 👔', rm.x+rm.w/2, rm.y+40);
+                } else if (rm.id === 'meeting' && officeTask === 'proj_start') {
+                    ctx.fillText(rm.name + ' 👔', rm.x+rm.w/2, rm.y+40);
+                } else {
+                    ctx.fillText(rm.name, rm.x+rm.w/2, rm.y+40);
+                }
+            });
+
+            // Cubicles
+            cubicles.forEach(cub => {
+                ctx.fillStyle = '#94a3b8'; ctx.fillRect(cub.x, cub.y, cub.w, cub.h); 
+                
+                // Highlight target cubicle if active for onboarding or EDR
+                if (cub.id === 'target_desk' && ((officeTask === 'onb_deploy' && carrying === 'laptop') || officeTask === 'proj_edr')) {
+                    ctx.fillStyle = '#fde047'; ctx.fillRect(cub.x+2, cub.y+2, cub.w-4, cub.h-4); 
+                } else {
+                    ctx.fillStyle = '#f8fafc'; ctx.fillRect(cub.x+4, cub.y+4, cub.w-8, cub.h-8); 
+                }
+                
+                // Computer
+                ctx.fillStyle = '#334155'; ctx.fillRect(cub.x+10, cub.y+10, 15, 8); 
+            });
+
+            // Cart on Floor
+            if (cartActiveOnFloor) {
+                ctx.fillStyle = '#94a3b8'; ctx.fillRect(cartParking.x+10, cartParking.y+10, 20, 20);
+                ctx.fillStyle = '#334155'; ctx.fillRect(cartParking.x+12, cartParking.y+12, 16, 16);
+                ctx.font = '16px sans-serif'; ctx.fillText('🛒', cartParking.x+20, cartParking.y+26);
+            }
+        }
+
+        function drawPerson(ctx, x, y, w, h, carryState) {
+            ctx.fillStyle = '#fde047'; ctx.fillRect(x + 4, y + 10, w - 8, h - 18); // body
+            ctx.fillStyle = '#fbbf24'; ctx.beginPath(); ctx.arc(x + w/2, y + 5, 6, 0, Math.PI*2); ctx.fill(); // head
+            ctx.fillStyle = '#1d4ed8'; ctx.fillRect(x + 5, y + h - 8, 4, 8); ctx.fillRect(x + w - 9, y + h - 8, 4, 8); // legs
+            
+            if (carryState === 'cart') { ctx.font = '20px sans-serif'; ctx.fillText('🛒', x+20, y+20); }
+            if (carryState === 'cart_pkg') { ctx.font = '20px sans-serif'; ctx.fillText('🛒📦', x+30, y+20); }
+            if (carryState === 'laptop') { ctx.font = '16px sans-serif'; ctx.fillText('💻', x+20, y+20); }
+        }
+
+        // --- INPUTS ---
         window.addEventListener('keydown', e => { if(keys.hasOwnProperty(e.key)) { keys[e.key] = true; if(simActive) e.preventDefault(); } });
         window.addEventListener('keyup', e => { if(keys.hasOwnProperty(e.key)) keys[e.key] = false; });
-
         const setupBtn = (id, key) => {
-            const btn = document.getElementById(id);
-            if(!btn) return;
+            const btn = document.getElementById(id); if(!btn) return;
             const press = (e) => { e.preventDefault(); keys[key] = true; };
             const release = (e) => { e.preventDefault(); keys[key] = false; };
             btn.addEventListener('touchstart', press, {passive: false}); btn.addEventListener('touchend', release, {passive: false});
@@ -295,232 +752,6 @@
         setupBtn('btn-up', 'ArrowUp'); setupBtn('btn-down', 'ArrowDown');
         setupBtn('btn-left', 'ArrowLeft'); setupBtn('btn-right', 'ArrowRight');
 
-        // --- TRAFFIC LOGIC ---
-        function spawnVehicle(forcedLane = null, forcedX = null, bypassChance = false) {
-            if(!bypassChance && Math.random() > 0.025) return; 
-            
-            const laneIndex = forcedLane ? forcedLane - 1 : Math.floor(Math.random() * lanes.length);
-            const lane = lanes[laneIndex];
-            const x = forcedX !== null ? forcedX : (lane.dir === 1 ? -80 : 680);
-            
-            const typeRand = Math.random();
-            let type = 'car', w = 55, h = 32, speed, color;
-            
-            if (typeRand > 0.7 && typeRand <= 0.9) {
-                type = 'moped'; w = 30; h = 16; speed = 3 + Math.random() * 2; color = colors.moped;
-            } else if (typeRand > 0.9) {
-                type = 'bike'; w = 30; h = 12; speed = 1.5 + Math.random() * 1.5; color = colors.bike;
-            } else {
-                speed = 2 + Math.random() * 2;
-                const carColors = [colors.car1, colors.car2, colors.car3, colors.carLyft];
-                color = carColors[Math.floor(Math.random() * carColors.length)];
-            }
-
-            let safeToSpawn = true;
-            vehicles.forEach(v => {
-                if(v.laneIndex === laneIndex && Math.abs(v.x - x) < 80) safeToSpawn = false;
-            });
-
-            if(safeToSpawn) vehicles.push({ x, y: lane.y, w, h, speed, dir: lane.dir, laneIndex, type, color });
-        }
-
-        function update() {
-            if(gameState !== 'playing') return;
-
-            // Timer update
-            let now = Date.now();
-            gameTimer += (now - lastFrameTime) / 1000;
-            lastFrameTime = now;
-
-            // Traffic Light
-            trafficLight.timer++;
-            if(trafficLight.state === 'green' && trafficLight.timer > trafficLight.intervals.green) {
-                trafficLight.state = 'yellow'; trafficLight.timer = 0;
-            } else if(trafficLight.state === 'yellow' && trafficLight.timer > trafficLight.intervals.yellow) {
-                trafficLight.state = 'red'; trafficLight.timer = 0;
-            } else if(trafficLight.state === 'red' && trafficLight.timer > trafficLight.intervals.red) {
-                trafficLight.state = 'green'; trafficLight.timer = 0;
-            }
-
-            // Player Movement
-            if(keys.ArrowUp || keys.w) player.y -= player.speed;
-            if(keys.ArrowDown || keys.s) player.y += player.speed;
-            if(keys.ArrowLeft || keys.a) player.x -= player.speed;
-            if(keys.ArrowRight || keys.d) player.x += player.speed;
-            
-            // Screen Bounds
-            player.x = Math.max(0, Math.min(600 - player.w, player.x));
-            player.y = Math.max(0, Math.min(460 - player.h, player.y));
-
-            // Check Home Location
-            if (player.x < homeLocation.door.x + homeLocation.door.w && player.x + player.w > homeLocation.door.x &&
-                player.y < homeLocation.door.y + homeLocation.door.h && player.y + player.h > homeLocation.door.y) {
-                playSuccessMusic();
-                endGame("Safe at Home!", "text-emerald-400", "You successfully finished your errands.");
-                return;
-            }
-            
-            // Slide against Home wall
-            if (player.x < homeLocation.rect.x + homeLocation.rect.w && player.x + player.w > homeLocation.rect.x &&
-                player.y < homeLocation.rect.y + homeLocation.rect.h && player.y + player.h > homeLocation.rect.y) {
-                player.y = homeLocation.rect.y + homeLocation.rect.h;
-            }
-
-            // Store Collision & Door Interaction
-            stores.forEach(store => {
-                if (player.x < store.door.x + store.door.w && player.x + player.w > store.door.x &&
-                    player.y < store.door.y + store.door.h && player.y + player.h > store.door.y) {
-                    openStore(store);
-                }
-                if (player.x < store.rect.x + store.rect.w && player.x + player.w > store.rect.x &&
-                    player.y < store.rect.y + store.rect.h && player.y + player.h > store.rect.y) {
-                    if (store.type === 'top') player.y = store.rect.y + store.rect.h;
-                    else player.y = store.rect.y - player.h;
-                }
-            });
-
-            // Update Vehicles
-            spawnVehicle();
-            vehicles.forEach((v, i) => {
-                let shouldStop = false;
-                const safeDist = 20;
-
-                // Stop for red/yellow lights
-                if(trafficLight.state !== 'green') {
-                    if(v.dir === 1) {
-                        let nextCw = crosswalks.find(cw => cw.x > v.x + v.w);
-                        if (nextCw && (v.x + v.w < nextCw.x - 10) && (v.x + v.w + v.speed >= nextCw.x - 10 - safeDist)) shouldStop = true;
-                    } else {
-                        let nextCw = [...crosswalks].reverse().find(cw => cw.x + cw.w < v.x);
-                        if (nextCw && (v.x > nextCw.x + nextCw.w + 10) && (v.x - v.speed <= nextCw.x + nextCw.w + 10 + safeDist)) shouldStop = true;
-                    }
-                }
-
-                // Stop for vehicles ahead
-                vehicles.forEach((other, j) => {
-                    if(i !== j && v.laneIndex === other.laneIndex) {
-                        if(v.dir === 1 && other.x > v.x && (other.x - (v.x + v.w)) < safeDist) shouldStop = true;
-                        if(v.dir === -1 && v.x > other.x && (v.x - (other.x + other.w)) < safeDist) shouldStop = true;
-                    }
-                });
-
-                if(!shouldStop) v.x += v.speed * v.dir;
-
-                // Collision Detection
-                const hitMargin = 3;
-                if(player.x + hitMargin < v.x + v.w && player.x + player.w - hitMargin > v.x &&
-                   player.y + hitMargin < v.y + v.h && player.y + player.h - hitMargin > v.y) {
-                    endGame("Hit by Traffic!", "text-rose-500", "Watch the traffic and wait for the WALK signal.");
-                }
-            });
-
-            vehicles = vehicles.filter(v => v.x > -150 && v.x < 750);
-        }
-
-        // --- DRAWING FUNCTIONS ---
-        function drawPerson(ctx, x, y, w, h) {
-            ctx.fillStyle = '#fde047'; ctx.fillRect(x + 4, y + 10, w - 8, h - 18); // body
-            ctx.fillStyle = '#fbbf24'; ctx.beginPath(); ctx.arc(x + w/2, y + 5, 6, 0, Math.PI*2); ctx.fill(); // head
-            ctx.fillStyle = '#1d4ed8'; ctx.fillRect(x + 5, y + h - 8, 4, 8); ctx.fillRect(x + w - 9, y + h - 8, 4, 8); // legs
-        }
-
-        function drawVehicle(ctx, v) {
-            if (v.type === 'car') {
-                ctx.fillStyle = v.color; ctx.beginPath(); ctx.roundRect(v.x, v.y, v.w, v.h, 6); ctx.fill();
-                ctx.fillStyle = '#9ca3af'; // Windshields
-                if(v.dir === 1) { ctx.fillRect(v.x + 38, v.y + 4, 10, 24); ctx.fillRect(v.x + 8, v.y + 4, 25, 24); } 
-                else { ctx.fillRect(v.x + 7, v.y + 4, 10, 24); ctx.fillRect(v.x + 22, v.y + 4, 25, 24); }
-            } else if (v.type === 'moped') {
-                ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(v.x + 6, v.y + v.h, 4, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(v.x + v.w - 6, v.y + v.h, 4, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = v.color; ctx.fillRect(v.x + 4, v.y + 6, v.w - 8, 8);
-                ctx.fillStyle = '#ef4444'; ctx.fillRect(v.x + (v.dir === 1 ? 6 : 14), v.y - 4, 10, 12); // Rider
-                ctx.fillStyle = '#fbbf24'; ctx.beginPath(); ctx.arc(v.x + (v.dir===1 ? 11 : 19), v.y - 5, 4, 0, Math.PI*2); ctx.fill();
-            } else if (v.type === 'bike') {
-                ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.arc(v.x + 5, v.y + v.h, 5, 0, Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.arc(v.x + v.w - 5, v.y + v.h, 5, 0, Math.PI*2); ctx.stroke();
-                ctx.strokeStyle = v.color; ctx.beginPath(); ctx.moveTo(v.x+5, v.y+v.h); ctx.lineTo(v.x+15, v.y+6); ctx.lineTo(v.x+v.w-5, v.y+v.h); ctx.stroke(); ctx.beginPath(); ctx.moveTo(v.x+10, v.y+6); ctx.lineTo(v.x+20, v.y+6); ctx.stroke();
-                ctx.fillStyle = '#3b82f6'; ctx.fillRect(v.x + (v.dir===1 ? 10 : 15), v.y - 2, 6, 8); // Rider
-                ctx.fillStyle = '#fca5a5'; ctx.beginPath(); ctx.arc(v.x + (v.dir===1 ? 13 : 18), v.y - 4, 3, 0, Math.PI*2); ctx.fill();
-            }
-        }
-
-        // HUD placed dynamically. Y axis adjusted to sit exactly on the double yellow line.
-        function drawTrafficHUD(ctx, x, y) {
-            ctx.fillStyle = colors.lightBox; ctx.fillRect(x, y, 16, 40); ctx.fillRect(x + 6, y + 40, 4, 15);
-            ctx.beginPath(); ctx.arc(x + 8, y + 8, 4, 0, Math.PI*2); ctx.fillStyle = trafficLight.state === 'red' ? colors.redOn : colors.redOff; ctx.fill();
-            ctx.beginPath(); ctx.arc(x + 8, y + 20, 4, 0, Math.PI*2); ctx.fillStyle = trafficLight.state === 'yellow' ? colors.yelOn : colors.yelOff; ctx.fill();
-            ctx.beginPath(); ctx.arc(x + 8, y + 32, 4, 0, Math.PI*2); ctx.fillStyle = trafficLight.state === 'green' ? colors.grnOn : colors.grnOff; ctx.fill();
-
-            // Pedestrian Box placed to the right of the pole
-            ctx.fillStyle = colors.lightBox; ctx.fillRect(x + 18, y + 15, 26, 18);
-            ctx.font = "bold 9px sans-serif"; ctx.textAlign = "center";
-            if(trafficLight.state === 'red') { ctx.fillStyle = colors.line; ctx.fillText("WALK", x + 31, y + 27); } 
-            else { ctx.fillStyle = colors.yelOn; ctx.fillText("WAIT", x + 31, y + 27); }
-        }
-
-        function draw() {
-            ctx.fillStyle = colors.grass; ctx.fillRect(0, 0, 600, 460); // Grass
-            ctx.fillStyle = colors.sidewalk; 
-            ctx.fillRect(0, 0, 600, 100); // Top Sidewalk
-            ctx.fillRect(0, 340, 600, 120); // Bottom Sidewalk
-            
-            ctx.fillStyle = colors.road; ctx.fillRect(0, 100, 600, 240); // Road
-
-            // Lane Dividers
-            ctx.fillStyle = colors.line;
-            for(let i=0; i<600; i+=30) { ctx.fillRect(i, 160, 15, 2); ctx.fillRect(i, 280, 15, 2); }
-            ctx.fillStyle = '#fbbf24'; ctx.fillRect(0, 218, 600, 2); ctx.fillRect(0, 222, 600, 2);
-
-            // Crosswalks and Traffic Lights
-            crosswalks.forEach(cw => {
-                ctx.fillStyle = colors.line; for(let i = 105; i < 335; i += 15) ctx.fillRect(cw.x, i, cw.w, 8);
-                ctx.fillRect(cw.x - 10, 100, 4, 115); ctx.fillRect(cw.x + cw.w + 6, 225, 4, 115);
-                
-                // Traffic light placed on the left side of crosswalk, directly on the double yellow line median (Y: 200)
-                drawTrafficHUD(ctx, cw.x - 38, 200);
-            });
-
-            // Draw Home
-            ctx.fillStyle = homeLocation.color; ctx.fillRect(homeLocation.rect.x, homeLocation.rect.y, homeLocation.rect.w, homeLocation.rect.h);
-            ctx.fillStyle = '#fde047'; ctx.fillRect(homeLocation.door.x, homeLocation.door.y, homeLocation.door.w, homeLocation.door.h);
-            ctx.fillStyle = 'white'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
-            ctx.fillText('🏡 Home', homeLocation.rect.x + homeLocation.rect.w/2, homeLocation.rect.y + 35);
-
-            // Draw Stores
-            stores.forEach(store => {
-                ctx.fillStyle = store.color;
-                ctx.fillRect(store.rect.x, store.rect.y, store.rect.w, store.rect.h);
-                ctx.fillStyle = 'rgba(0,0,0,0.2)';
-                for(let i=0; i<store.rect.w; i+=10) {
-                    ctx.fillRect(store.rect.x + i, store.rect.y + (store.type === 'top' ? store.rect.h - 15 : 0), 5, 15);
-                }
-                ctx.fillStyle = '#fde047'; ctx.fillRect(store.door.x, store.door.y, store.door.w, store.door.h);
-                ctx.fillStyle = 'white'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
-                ctx.fillText(store.name, store.rect.x + store.rect.w/2, store.rect.y + 30);
-            });
-
-            // Draw Entities
-            vehicles.forEach(v => drawVehicle(ctx, v));
-            drawPerson(ctx, player.x, player.y, player.w, player.h);
-
-            // Draw Floating Emojis
-            floatingEmojis.forEach(e => {
-                ctx.globalAlpha = e.life / e.maxLife;
-                ctx.font = "28px sans-serif";
-                ctx.textAlign = 'center';
-                ctx.fillText(e.char, e.x + 10, e.y);
-                e.y -= 0.8;
-                e.life--;
-            });
-            ctx.globalAlpha = 1.0;
-            floatingEmojis = floatingEmojis.filter(e => e.life > 0);
-
-            // Timer HUD 
-            ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.roundRect(470, 410, 120, 40, 8); ctx.fill();
-            ctx.fillStyle = '#38bdf8'; ctx.font = "bold 16px sans-serif"; ctx.textAlign = "center";
-            ctx.fillText(`Time: ${gameTimer.toFixed(1)}s`, 530, 436);
-        }
-
         function gameLoop() {
             update();
             draw();
@@ -528,8 +759,7 @@
         }
 
         window.addEventListener('DOMContentLoaded', () => {
-            initializeState();
-            draw(); 
+            showMenu(); 
             requestAnimationFrame(gameLoop);
         });
     </script>
